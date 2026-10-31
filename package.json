@@ -1,0 +1,64 @@
+{
+  "name": "idef-studio",
+  "version": "0.5.0",
+  "private": true,
+  "description": "Учебный редактор IDEF0, DFD, IDEF3 и IDEF1X",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "start": "electron .",
+    "test": "tsx --test tests/*.test.ts",
+    "package": "npm run build && electron-builder --win dir",
+    "test:ui": "node tests/ui.cjs",
+    "test:arrows-ui": "node tests/arrows-ui.cjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "electron": "45.0.0",
+    "electron-builder": "^26.0.12",
+    "prettier": "^3.9.10",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0"
+  },
+  "build": {
+    "appId": "local.idefstudio.app",
+    "productName": "IDEF Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": true,
+      "icon": "electron/icon.ico",
+      "signExecutable": false
+    },
+    "extraFiles": [
+      {
+        "from": "LICENSE",
+        "to": "LICENSE-project.txt"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.txt",
+        "to": "THIRD_PARTY_NOTICES.txt"
+      }
+    ]
+  },
+  "license": "GPL-3.0-only"
+}
