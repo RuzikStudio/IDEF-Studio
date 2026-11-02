@@ -1,8 +1,8 @@
 # IDEF Studio
 
-[![Скачать для Windows](https://img.shields.io/badge/Скачать_для_Windows-0.5.0_x64-2563eb?style=for-the-badge&logo=windows)](https://github.com/RuzikStudio/IDEF-Studio/releases/download/v0.5.0/IDEF-Studio-Windows-x64.zip)
+[![Скачать для Windows](https://img.shields.io/badge/Скачать_для_Windows-0.5.0_x64-2563eb?style=for-the-badge&logo=windows)](https://github.com/RuzikStudio/IDEF-Studio/releases/download/v0.5.0-themes/IDEF-Studio-Windows-x64.zip)
 
-**[Скачать приложение для Windows — ZIP](https://github.com/RuzikStudio/IDEF-Studio/releases/download/v0.5.0/IDEF-Studio-Windows-x64.zip)**
+**[Скачать приложение для Windows — ZIP](https://github.com/RuzikStudio/IDEF-Studio/releases/download/v0.5.0-themes/IDEF-Studio-Windows-x64.zip)**
 
 После скачивания распакуйте **весь архив** и запустите **IDEF Studio.exe**. Аккаунт GitHub и Node.js для запуска не нужны. Это предварительная версия 0.5.0.
 
@@ -15,7 +15,9 @@
 | IDEF3 | Действия, предшествование, AND/OR/XOR, декомпозиция | Нет синхронных перекрёстков, референтов и состояний объектов |
 | IDEF1X | Атрибуты, PK/FK, типы связей, кардинальность | Нет подтипов, альтернативных ключей, SQL и полной проверки циклов |
 
-![Пример IDEF1X](docs/idef1x.png)
+![Светлый рабочий стол](docs/theme-light.png)
+
+Кнопка с луной или солнцем в шапке переключает тему. Выбор сохраняется. [Посмотреть тёмную тему](docs/theme-dark.png).
 
 ## Запуск
 
