@@ -11,6 +11,8 @@ import {
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   Layers,
+  Sun,
+  Moon,
   MousePointer2,
   Plus,
   ArrowUpRight,
@@ -194,6 +196,13 @@ function initial() {
   return demoProject();
 }
 export default function App() {
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem("studio-theme") === "dark"; } catch { return false; }
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    try { localStorage.setItem("studio-theme", dark ? "dark" : "light"); } catch {}
+  }, [dark]);
   const [project, setProject] = useState<Project>(initial),
     [did, setDid] = useState(() => project.rootId),
     [selected, setSelected] = useState<string>(),
@@ -829,7 +838,6 @@ export default function App() {
           <span>
             IDEF<span className="brand-light"> Studio</span>
           </span>
-          <span className="version">preview</span>
         </div>
         <div className="header-project">
           <span className="project-dot" />
@@ -842,6 +850,7 @@ export default function App() {
           )}
         </div>
         <div className="header-actions">
+          <button className="theme-button" aria-label="Тёмная тема" aria-pressed={dark} title={dark ? "Включить светлую тему" : "Включить тёмную тему"} onClick={() => setDark(!dark)}>{dark ? <Sun size={16}/> : <Moon size={16}/>}</button>
           <button className="quiet-button" onClick={open}>
             <FolderOpen size={16} />
             Открыть
@@ -858,7 +867,7 @@ export default function App() {
       <div className="workspace">
         <aside className="sidebar">
           <div className="sidebar-heading">
-            <span>ПРОЕКТ</span>
+            <span>Проект</span>
             <IconButton title="Новый проект" onClick={() => setReplace("new")}>
               <FilePlus2 size={16} />
             </IconButton>
@@ -1254,7 +1263,7 @@ export default function App() {
             {node ? (
               <>
                 <label>
-                  НАЗВАНИЕ
+                  Название
                   <Field
                     aria-label="Название функции"
                     multiline
@@ -1270,7 +1279,7 @@ export default function App() {
                   />
                 </label>
                 <label>
-                  ОПИСАНИЕ
+                  Описание
                   <Field
                     aria-label="Описание функции"
                     multiline
@@ -1288,7 +1297,7 @@ export default function App() {
                 </label>
                 {er && <label>АТРИБУТЫ (по строке, PK перед ключом)<Field aria-label="Атрибуты" multiline value={node.attributes||""} onChange={value=>commit(p=>{const n=p.diagrams[currentId].nodes.find(n=>n.id===node.id)!;n.attributes=value;n.h=Math.max(n.h,100+value.split("\n").length*22);})}/><small>Внешние ключи добавляются из родительских сущностей автоматически.</small></label>}
 <div className="property-section">
-                  <span className="field-caption">ЦВЕТ БЛОКА</span>
+                  <span className="field-caption">Цвет блока</span>
                   <div className="swatches">
                     {[
                       "#ffffff",
@@ -1317,7 +1326,7 @@ export default function App() {
                 </div>
                 <div className="size-fields">
                   <label>
-                    ШИРИНА
+                    Ширина
                     <input
                       aria-label="Ширина функции"
                       type="number"
@@ -1336,7 +1345,7 @@ export default function App() {
                     />
                   </label>
                   <label>
-                    ВЫСОТА
+                    Высота
                     <input
                       aria-label="Высота функции"
                       type="number"
@@ -1397,7 +1406,7 @@ export default function App() {
             ) : arrow ? (
               <>
                 <label>
-                  НАЗВАНИЕ ПОТОКА
+                  Название потока
                   <Field
                     aria-label="Название потока"
                     multiline
@@ -1471,7 +1480,7 @@ export default function App() {
                   );
                 })}
                 <div className="routing-card">
-                  <span className="field-caption">МАРШРУТ СТРЕЛКИ</span>
+                  <span className="field-caption">Маршрут стрелки</span>
                   <div className="routing-mode">
                     <button
                       className={
@@ -1553,7 +1562,7 @@ export default function App() {
                         currentId !== project.rootId),
                   ) && (
                     <div className="tunnel-card">
-                      <span className="field-caption">ТУННЕЛИРОВАНИЕ</span>
+                      <span className="field-caption">Туннелирование</span>
                       {(["source", "target"] as const).map((which) => {
                         const ep = arrow[which];
                         if (
@@ -1660,7 +1669,7 @@ export default function App() {
             ) : (
               <>
                 <label>
-                  НАЗВАНИЕ ПРОЕКТА
+                  Название проекта
                   <Field
                     aria-label="Название проекта"
                     value={project.title}
@@ -1672,7 +1681,7 @@ export default function App() {
                   />
                 </label>
                 <label>
-                  ОРГАНИЗАЦИЯ
+                  Организация
                   <Field
                     aria-label="Организация"
                     placeholder="Например, университет"
@@ -1685,7 +1694,7 @@ export default function App() {
                   />
                 </label>
                 <label>
-                  АВТОР
+                  Автор
                   <Field
                     aria-label="Автор"
                     placeholder="Имя, группа"
@@ -1698,7 +1707,7 @@ export default function App() {
                   />
                 </label>
                 <div className="property-section">
-                  <span className="field-caption">НА ЭТОЙ ДИАГРАММЕ</span>
+                  <span className="field-caption">На этой диаграмме</span>
                   <div className="stat-row">
                     <span>{dfd ? "Элементы" : "Функции"}</span>
                     <b>{d.nodes.length}</b>
@@ -1729,7 +1738,7 @@ export default function App() {
               </>
             )}
             <div className="properties-bottom">
-              <span className="field-caption">ФАЙЛ ПРОЕКТА</span>
+              <span className="field-caption">Файл проекта</span>
               <p title={filename}>{filename || "Ещё не сохранён в файл"}</p>
               <button onClick={() => save(true)}>
                 <Copy size={13} />
