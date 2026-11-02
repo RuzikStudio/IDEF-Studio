@@ -20,7 +20,7 @@ jobs:
       - run: npx electron-builder --win dir
       - run: node tests/ports-ui.cjs "release/win-unpacked/IDEF Studio.exe"
       - run: node tests/local-mixed-ui.cjs "release/win-unpacked/IDEF Studio.exe"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: IDEF-Studio-Windows-x64
           path: release/win-unpacked/
