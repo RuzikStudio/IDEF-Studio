@@ -15,7 +15,7 @@
     "test:arrows-ui": "node tests/arrows-ui.cjs"
   },
   "dependencies": {
-    "lucide-react": "^0.468.0",
+    "lucide-react": "^1.65.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
