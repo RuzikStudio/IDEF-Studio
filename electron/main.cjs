@@ -63,7 +63,7 @@ app.whenReady().then(() => {
   });
   Menu.setApplicationMenu(null);
   win = new BrowserWindow({
-    title: "IDEF Studio 0.5",
+    title: "IDEF Studio 0.6",
     width: 1500,
     height: 980,
     minWidth: 1050,
@@ -123,7 +123,7 @@ app.whenReady().then(() => {
     if (stat.size > 20_000_000) throw Error("Файл больше 20 МБ");
     const text = await fs.readFile(file, "utf8");
     const data = JSON.parse(text);
-    if (data.format !== "idef-studio" || ![1, 2, 3].includes(data.version))
+    if (data.format !== "idef-studio" || ![1, 2, 3, 4].includes(data.version))
       throw Error("Неподдерживаемый формат проекта");
     pendingOpenPath = file;
     pendingLegacy = data.version < 3;

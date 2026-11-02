@@ -1,4 +1,11 @@
-import {idef1xDemo} from "./idef1x";
+import {
+  occupied,
+  freeSlot,
+  alignedBoundary,
+  spreadBoundaryPorts,
+} from "./ports";
+import { ModelReport, ProcessFields } from "./ModelReport";
+import { idef1xDemo } from "./idef1x";
 import {
   useState,
   useRef,
@@ -197,11 +204,17 @@ function initial() {
 }
 export default function App() {
   const [dark, setDark] = useState(() => {
-    try { return localStorage.getItem("studio-theme") === "dark"; } catch { return false; }
+    try {
+      return localStorage.getItem("studio-theme") === "dark";
+    } catch {
+      return false;
+    }
   });
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
-    try { localStorage.setItem("studio-theme", dark ? "dark" : "light"); } catch {}
+    try {
+      localStorage.setItem("studio-theme", dark ? "dark" : "light");
+    } catch {}
   }, [dark]);
   const [project, setProject] = useState<Project>(initial),
     [did, setDid] = useState(() => project.rootId),
@@ -221,10 +234,16 @@ export default function App() {
     [count, setCount] = useState(3),
     [replace, setReplace] = useState<"new" | "demo" | null>(null),
     [exportMenu, setExportMenu] = useState(false);
-  const [newNotation, setNewNotation] = useState<"IDEF0" | "DFD" | "IDEF3" | "IDEF1X">("IDEF0");
-  const er = project.notation === "IDEF1X";
- const idef3 = project.notation === "IDEF3";
- const dfd = project.notation !== "IDEF0";
+  const [newNotation, setNewNotation] = useState<
+    "IDEF0" | "DFD" | "IDEF3" | "IDEF1X"
+  >("IDEF0");
+  const [childNotation, setChildNotation] =
+    useState<Project["notation"]>("IDEF0");
+  const [report, setReport] = useState(false);
+  const notation = project.diagrams[did]?.notation ?? project.notation;
+  const er = notation === "IDEF1X";
+  const idef3 = notation === "IDEF3";
+  const dfd = notation !== "IDEF0";
   const past = useRef<Project[]>([]),
     future = useRef<Project[]>([]),
     [historyVersion, setHistoryVersion] = useState(0),
@@ -412,7 +431,10 @@ export default function App() {
   }
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.code === "KeyS" || e.key.toLowerCase() === "s")) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.code === "KeyS" || e.key.toLowerCase() === "s")
+      ) {
         e.preventDefault();
         (document.activeElement as HTMLElement)?.blur();
         void save(e.shiftKey);
@@ -427,19 +449,19 @@ export default function App() {
         setReplace(null);
       }
       if (e.ctrlKey || e.metaKey) {
-        if ((e.code === "KeyS" || e.key.toLowerCase() === "s")) {
+        if (e.code === "KeyS" || e.key.toLowerCase() === "s") {
           e.preventDefault();
           void save(e.shiftKey);
         }
-        if ((e.code === "KeyO" || e.key.toLowerCase() === "o")) {
+        if (e.code === "KeyO" || e.key.toLowerCase() === "o") {
           e.preventDefault();
           void open();
         }
-        if ((e.code === "KeyZ" || e.key.toLowerCase() === "z")) {
+        if (e.code === "KeyZ" || e.key.toLowerCase() === "z") {
           e.preventDefault();
           e.shiftKey ? redo() : undo();
         }
-        if ((e.code === "KeyY" || e.key.toLowerCase() === "y")) {
+        if (e.code === "KeyY" || e.key.toLowerCase() === "y") {
           e.preventDefault();
           redo();
         }
@@ -450,15 +472,33 @@ export default function App() {
   });
   useEffect(() => window.desktop?.onSave(() => void save()), []);
   function askDecompose(id: string) {
- if(er){notify("В IDEF1X сущности связываются на одной диаграмме.");return;}
+    if (er) {
+      notify("В IDEF1X сущности связываются на одной диаграмме.");
+      return;
+    }
     const n = d.nodes.find((n) => n.id === id)!;
- if(n.junction){notify("Перекрёсток не декомпозируется.");return;}
+    if (n.referentId) {
+      const target = Object.values(project.diagrams).find(
+        (d) =>
+          d.id === n.referentId || d.nodes.some((x) => x.id === n.referentId),
+      );
+      if (target) {
+        navigate(target.id);
+        setSelected(n.referentId);
+      } else notify("Объект ссылки удалён");
+      return;
+    }
+    if (n.junction) {
+      notify("Перекрёсток не декомпозируется.");
+      return;
+    }
     if (dfd && (kindOf(n) !== "process" || n.contextOf)) {
       notify("Декомпозиция доступна для собственных процессов.");
       return;
     }
     if (n.childId) navigate(n.childId);
     else {
+      setChildNotation(notation);
       setDecomp(id);
       setCount(3);
     }
@@ -469,7 +509,9 @@ export default function App() {
       return;
     }
     if (
-      !er && !idef3 && currentId === project.rootId &&
+      !er &&
+      !idef3 &&
+      currentId === project.rootId &&
       kind === "process" &&
       d.nodes.some((n) => kindOf(n) === "process")
     ) {
@@ -484,7 +526,13 @@ export default function App() {
       id = addBlock(
         p,
         currentId,
-        er ? "Сущность" : idef3 ? "Действие" : dfd ? kindNames[kind] : "Новая функция",
+        er
+          ? "Сущность"
+          : idef3
+            ? "Действие"
+            : dfd
+              ? kindNames[kind]
+              : "Новая функция",
         200 + (i % 4) * 270,
         220 + Math.floor(i / 4) * 170,
         kind,
@@ -496,14 +544,27 @@ export default function App() {
   function addBoundary(side: Side) {
     let id = "";
     commit((p) => {
-      const n = p.diagrams[currentId].nodes.find((n) => n.id === selected),
-        ep = n ? nodeEnd(n.id, side) : null;
-      const num = p.diagrams[currentId].arrows.filter(
-        (a) =>
-          (a.source?.kind === "boundary" && a.source.side === side) ||
-          (a.target?.kind === "boundary" && a.target.side === side),
-      ).length;
-      const edge = boundary(side, Math.min(0.9, 0.2 + num * 0.13));
+      const diagram = p.diagrams[currentId];
+      const previous = diagram.arrows.find((a) => a.id === selected);
+      const previousEnd =
+        side === "right" ? previous?.source : previous?.target;
+      const n =
+        diagram.nodes.find((n) => n.id === selected) ??
+        (previousEnd?.kind === "node"
+          ? diagram.nodes.find((n) => n.id === previousEnd.nodeId)
+          : undefined) ??
+        (diagram.nodes.length === 1 ? diagram.nodes[0] : undefined);
+      const ep = n
+        ? nodeEnd(n.id, side, freeSlot(occupied(diagram, n.id, side)))
+        : null;
+      const boundarySlots = visibleArrows(diagram)
+        .flatMap((a) => [a.source, a.target])
+        .flatMap((e) =>
+          e?.kind === "boundary" && e.side === side ? [e.at] : [],
+        );
+      const edge = ep
+        ? alignedBoundary(diagram, ep)
+        : boundary(side, freeSlot(boundarySlots));
       id = addArrow(
         p,
         currentId,
@@ -765,7 +826,11 @@ export default function App() {
       if (!value) a[which] = null;
       else {
         const [nodeId, side] = value.split("|");
-        a[which] = nodeEnd(nodeId, side as Side);
+        a[which] = nodeEnd(
+          nodeId,
+          side as Side,
+          freeSlot(occupied(p.diagrams[currentId], nodeId, side as Side)),
+        );
       }
       if (!a[which])
         delete a[which === "source" ? "tunnelSource" : "tunnelTarget"];
@@ -850,7 +915,15 @@ export default function App() {
           )}
         </div>
         <div className="header-actions">
-          <button className="theme-button" aria-label="Тёмная тема" aria-pressed={dark} title={dark ? "Включить светлую тему" : "Включить тёмную тему"} onClick={() => setDark(!dark)}>{dark ? <Sun size={16}/> : <Moon size={16}/>}</button>
+          <button
+            className="theme-button"
+            aria-label="Тёмная тема"
+            aria-pressed={dark}
+            title={dark ? "Включить светлую тему" : "Включить тёмную тему"}
+            onClick={() => setDark(!dark)}
+          >
+            {dark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           <button className="quiet-button" onClick={open}>
             <FolderOpen size={16} />
             Открыть
@@ -885,6 +958,9 @@ export default function App() {
             ДИАГРАММЫ <span>{Object.keys(project.diagrams).length}</span>
           </div>
           <div className="diagram-tree">{renderTree(project.rootId)}</div>
+          <button className="sample-button" onClick={() => setReport(true)}>
+            Отчёт по модели
+          </button>
           <button className="sample-button" onClick={() => setReplace("demo")}>
             <RotateCcw size={14} />
             Открыть учебный пример
@@ -933,7 +1009,7 @@ export default function App() {
             </div>
             <div className="diagram-title-row">
               <h1>{diagramTitle(project, currentId)}</h1>
-              <span className="notation-tag">{project.notation}</span>
+              <span className="notation-tag">{notation}</span>
               <div className="diagram-title-actions">
                 <button
                   className={`quiet-button validation-button ${issuesOpen ? "active" : ""}`}
@@ -991,7 +1067,26 @@ export default function App() {
               </button>
             </div>
             <span className="toolbar-separator" />
-            {er ? null : idef3 ? <div className="toolbar-group">{["AND","OR","XOR"].map(j=><button className="tool-button" key={j} onClick={()=>commit(p=>{const n=addBlock(p,currentId,j,650,400);n.junction=j as "AND"|"OR"|"XOR";n.w=80;n.h=80;})}>{j}</button>)}</div> : dfd ? (
+            {er ? null : idef3 ? (
+              <div className="toolbar-group">
+                {["AND", "OR", "XOR"].map((j) => (
+                  <button
+                    className="tool-button"
+                    key={j}
+                    onClick={() =>
+                      commit((p) => {
+                        const n = addBlock(p, currentId, j, 650, 400);
+                        n.junction = j as "AND" | "OR" | "XOR";
+                        n.w = 80;
+                        n.h = 80;
+                      })
+                    }
+                  >
+                    {j}
+                  </button>
+                ))}
+              </div>
+            ) : dfd ? (
               <div className="toolbar-group">
                 <button
                   className="tool-button"
@@ -1038,7 +1133,8 @@ export default function App() {
             <button
               className="tool-button decompose-button"
               disabled={
-                !node || er ||
+                !node ||
+                er ||
                 (dfd && (kindOf(node) !== "process" || !!node.contextOf))
               }
               onClick={() => node && askDecompose(node.id)}
@@ -1295,8 +1391,33 @@ export default function App() {
                     }
                   />
                 </label>
-                {er && <label>АТРИБУТЫ (по строке, PK перед ключом)<Field aria-label="Атрибуты" multiline value={node.attributes||""} onChange={value=>commit(p=>{const n=p.diagrams[currentId].nodes.find(n=>n.id===node.id)!;n.attributes=value;n.h=Math.max(n.h,100+value.split("\n").length*22);})}/><small>Внешние ключи добавляются из родительских сущностей автоматически.</small></label>}
-<div className="property-section">
+                {er && (
+                  <label>
+                    АТРИБУТЫ (по строке, PK перед ключом)
+                    <Field
+                      aria-label="Атрибуты"
+                      multiline
+                      value={node.attributes || ""}
+                      onChange={(value) =>
+                        commit((p) => {
+                          const n = p.diagrams[currentId].nodes.find(
+                            (n) => n.id === node.id,
+                          )!;
+                          n.attributes = value;
+                          n.h = Math.max(
+                            n.h,
+                            100 + value.split("\n").length * 22,
+                          );
+                        })
+                      }
+                    />
+                    <small>
+                      Внешние ключи добавляются из родительских сущностей
+                      автоматически.
+                    </small>
+                  </label>
+                )}
+                <div className="property-section">
                   <span className="field-caption">Цвет блока</span>
                   <div className="swatches">
                     {[
@@ -1324,6 +1445,46 @@ export default function App() {
                     ))}
                   </div>
                 </div>
+                <ProcessFields
+                  node={node}
+                  notation={notation}
+                  project={project}
+                  update={(fn) =>
+                    commit((p) =>
+                      fn(
+                        p.diagrams[currentId].nodes.find(
+                          (n) => n.id === node.id,
+                        )!,
+                      ),
+                    )
+                  }
+                  jump={(id) => {
+                    const target = Object.values(project.diagrams).find(
+                      (d) => d.id === id || d.nodes.some((n) => n.id === id),
+                    );
+                    if (target) {
+                      navigate(target.id);
+                      setSelected(id);
+                    }
+                  }}
+                />
+                {notation === "IDEF0" && (
+                  <button
+                    className="secondary-button"
+                    onClick={() =>
+                      commit((p) => {
+                        for (const side of sides)
+                          spreadBoundaryPorts(
+                            p.diagrams[currentId],
+                            node.id,
+                            side,
+                          );
+                      })
+                    }
+                  >
+                    Развести граничные стрелки
+                  </button>
+                )}
                 <div className="size-fields">
                   <label>
                     Ширина
@@ -1364,30 +1525,31 @@ export default function App() {
                     />
                   </label>
                 </div>
-                {(!er && (!dfd || (kindOf(node) === "process" && !node.contextOf))) && (
-                  <div className="inheritance-card">
-                    <GitBranch size={19} />
-                    <strong>
-                      {node.childId
-                        ? "Декомпозиция создана"
-                        : "Раскрыть функцию"}
-                    </strong>
-                    <p>
-                      {dfd
-                        ? "Входящие и исходящие потоки и их участники появятся на следующем уровне."
-                        : "Входы, выходы, управление и механизмы появятся на следующем уровне."}
-                    </p>
-                    <button
-                      className="secondary-button"
-                      onClick={() => askDecompose(node.id)}
-                    >
-                      {node.childId
-                        ? "Открыть диаграмму"
-                        : "Создать декомпозицию"}
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                )}
+                {!er &&
+                  (!dfd || (kindOf(node) === "process" && !node.contextOf)) && (
+                    <div className="inheritance-card">
+                      <GitBranch size={19} />
+                      <strong>
+                        {node.childId
+                          ? "Декомпозиция создана"
+                          : "Раскрыть функцию"}
+                      </strong>
+                      <p>
+                        {dfd
+                          ? "Входящие и исходящие потоки и их участники появятся на следующем уровне."
+                          : "Входы, выходы, управление и механизмы появятся на следующем уровне."}
+                      </p>
+                      <button
+                        className="secondary-button"
+                        onClick={() => askDecompose(node.id)}
+                      >
+                        {node.childId
+                          ? "Открыть диаграмму"
+                          : "Создать декомпозицию"}
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
                 {node.contextOf && (
                   <p className="inline-note">
                     Элемент контекста. Название и потоки изменяются на
@@ -1418,6 +1580,18 @@ export default function App() {
                     }
                   />
                 </label>
+                <label>
+                  Определение потока
+                  <Field
+                    multiline
+                    value={project.flows[arrow.flowId].definition || ""}
+                    onChange={(v) =>
+                      commit((p) => {
+                        p.flows[arrow.flowId].definition = v;
+                      })
+                    }
+                  />
+                </label>
                 {(arrow.originArrowId ||
                   Object.values(project.diagrams).some((dd) =>
                     dd.arrows.some(
@@ -1431,8 +1605,62 @@ export default function App() {
                     </span>
                   </div>
                 )}
-                {er && <label><input type="checkbox" checked={!!arrow.identifying} onChange={e=>commit(p=>{p.diagrams[currentId].arrows.find(a=>a.id===arrow.id)!.identifying=e.target.checked;})}/>Идентифицирующая связь (FK входит в PK)</label>}{er && <><label>КОЛИЧЕСТВО ДОЧЕРНИХ ЗАПИСЕЙ<select aria-label="Кардинальность" value={arrow.cardinality||"many"} onChange={e=>commit(p=>{p.diagrams[currentId].arrows.find(a=>a.id===arrow.id)!.cardinality=e.target.value as "many"|"oneOrMore"|"zeroOrOne"|"one";})}><option value="many">0 или больше</option><option value="oneOrMore">1 или больше (P)</option><option value="zeroOrOne">0 или 1 (Z)</option><option value="one">Ровно 1</option></select></label><label><input type="checkbox" disabled={!!arrow.identifying} checked={!arrow.identifying&&!!arrow.optionalParent} onChange={e=>commit(p=>{p.diagrams[currentId].arrows.find(a=>a.id===arrow.id)!.optionalParent=e.target.checked;})}/>Родитель необязателен</label></>}
-{(["source", "target"] as const).map((which) => {
+                {er && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={!!arrow.identifying}
+                      onChange={(e) =>
+                        commit((p) => {
+                          p.diagrams[currentId].arrows.find(
+                            (a) => a.id === arrow.id,
+                          )!.identifying = e.target.checked;
+                        })
+                      }
+                    />
+                    Идентифицирующая связь (FK входит в PK)
+                  </label>
+                )}
+                {er && (
+                  <>
+                    <label>
+                      КОЛИЧЕСТВО ДОЧЕРНИХ ЗАПИСЕЙ
+                      <select
+                        aria-label="Кардинальность"
+                        value={arrow.cardinality || "many"}
+                        onChange={(e) =>
+                          commit((p) => {
+                            p.diagrams[currentId].arrows.find(
+                              (a) => a.id === arrow.id,
+                            )!.cardinality = e.target.value as
+                              "many" | "oneOrMore" | "zeroOrOne" | "one";
+                          })
+                        }
+                      >
+                        <option value="many">0 или больше</option>
+                        <option value="oneOrMore">1 или больше (P)</option>
+                        <option value="zeroOrOne">0 или 1 (Z)</option>
+                        <option value="one">Ровно 1</option>
+                      </select>
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        disabled={!!arrow.identifying}
+                        checked={!arrow.identifying && !!arrow.optionalParent}
+                        onChange={(e) =>
+                          commit((p) => {
+                            p.diagrams[currentId].arrows.find(
+                              (a) => a.id === arrow.id,
+                            )!.optionalParent = e.target.checked;
+                          })
+                        }
+                      />
+                      Родитель необязателен
+                    </label>
+                  </>
+                )}
+                {(["source", "target"] as const).map((which) => {
                   const ep = arrow[which];
                   return (
                     <label key={which}>
@@ -1563,6 +1791,7 @@ export default function App() {
                   ) && (
                     <div className="tunnel-card">
                       <span className="field-caption">Туннелирование</span>
+
                       {(["source", "target"] as const).map((which) => {
                         const ep = arrow[which];
                         if (
@@ -1765,7 +1994,7 @@ export default function App() {
           <Keyboard size={13} />
           Горячие клавиши
         </button>
-        <span className="status-version">IDEF Studio 0.5</span>
+        <span className="status-version">IDEF Studio 0.6</span>
       </footer>
       {issuesOpen && (
         <div className="issues-panel">
@@ -1829,6 +2058,21 @@ export default function App() {
               Раскрыть функцию {blockCode(project, currentId, decompNode.id)}
             </h2>
             <p>{decompNode.name}</p>
+            {notation === "IDEF0" && (
+              <label>
+                Нотация дочерней диаграммы
+                <select
+                  value={childNotation}
+                  onChange={(e) =>
+                    setChildNotation(e.target.value as Project["notation"])
+                  }
+                >
+                  {["IDEF0", "DFD", "IDEF3"].map((x) => (
+                    <option key={x}>{x}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label>
               Сколько функций создать?
               <select
@@ -1847,7 +2091,9 @@ export default function App() {
               <Link2 size={18} />
               <span>
                 <strong>
-                  {inheritedCount} стрелок перейдут на следующий уровень.
+                  {childNotation === notation
+                    ? `${inheritedCount} стрелок перейдут на следующий уровень.`
+                    : "На границе разных нотаций связи задаются вручную."}
                 </strong>{" "}
                 Подключите их к новым функциям. Названия останутся связанными с
                 родительской диаграммой.
@@ -1862,7 +2108,13 @@ export default function App() {
                 onClick={() => {
                   let child = "";
                   commit((p) => {
-                    child = decompose(p, currentId, decompNode.id, count);
+                    child = decompose(
+                      p,
+                      currentId,
+                      decompNode.id,
+                      count,
+                      childNotation,
+                    );
                   });
                   setDecomp(null);
                   navigate(child);
@@ -1888,11 +2140,15 @@ export default function App() {
                 aria-label="Нотация"
                 value={newNotation}
                 onChange={(e) =>
-                  setNewNotation(e.target.value as "IDEF0" | "DFD" | "IDEF3" | "IDEF1X")
+                  setNewNotation(
+                    e.target.value as "IDEF0" | "DFD" | "IDEF3" | "IDEF1X",
+                  )
                 }
               >
                 <option>IDEF0</option>
-                <option>DFD</option><option>IDEF3</option><option>IDEF1X</option>
+                <option>DFD</option>
+                <option>IDEF3</option>
+                <option>IDEF1X</option>
               </select>
             </label>
             <p>
@@ -1912,9 +2168,13 @@ export default function App() {
                 onClick={() => {
                   const p =
                     replace === "demo"
-                      ? newNotation === "IDEF1X" ? idef1xDemo() : newNotation === "IDEF3" ? idef3Demo() : newNotation === "DFD"
-                        ? dfdDemo()
-                        : demoProject()
+                      ? newNotation === "IDEF1X"
+                        ? idef1xDemo()
+                        : newNotation === "IDEF3"
+                          ? idef3Demo()
+                          : newNotation === "DFD"
+                            ? dfdDemo()
+                            : demoProject()
                       : newProject("Новая модель", newNotation);
                   if (replace === "new") {
                     const n = addBlock(
@@ -1936,6 +2196,13 @@ export default function App() {
             </div>
           </section>
         </div>
+      )}
+      {report && (
+        <ModelReport
+          project={project}
+          close={() => setReport(false)}
+          notify={notify}
+        />
       )}
       {help && (
         <div className="modal-backdrop">

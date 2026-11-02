@@ -1,0 +1,18 @@
+import {demoProject} from '../src/demo';
+import {decompose,addBlock,addArrow,nodeEnd,syncInheritance,serialize,parseProject} from '../src/model';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+const p=demoProject(),root=p.diagrams[p.rootId].nodes[0],level=p.diagrams[root.childId!],design=level.nodes[0],build=level.nodes[1];
+const flow=decompose(p,level.id,design.id,0,'DFD');
+const customer=addBlock(p,flow,'Заказчик',100,340,'entity'),prepare=addBlock(p,flow,'Согласовать чертёж',540,340),archive=addBlock(p,flow,'Архив чертежей',980,340,'store');
+prepare.center='Конструкторское бюро';prepare.rate=800;prepare.hours=2;prepare.frequency=1;
+const request=addArrow(p,flow,nodeEnd(customer.id,'right'),nodeEnd(prepare.id,'left'),'Требования к мебели');p.flows[request.flowId].definition='Размеры, материалы и назначение изделия.';
+addArrow(p,flow,nodeEnd(prepare.id,'right'),nodeEnd(archive.id,'left'),'Согласованный чертёж');
+const scenario=decompose(p,level.id,build.id,0,'IDEF3');
+const make=(name:string,x:number,y:number,role:string)=>{const n=addBlock(p,scenario,name,x,y);n.role=role;return n;};
+const start=make('Получить чертёж',90,260,'Конструктор'),fork=make('AND',410,280,'Мастер');fork.w=84;fork.h=80;fork.junction='AND';fork.synchronous=true;
+const cut=make('Раскроить детали',620,170,'Мастер'),parts=make('Подготовить крепёж',620,500,'Кладовщик'),end=make('AND',950,300,'Мастер');end.junction='AND';end.synchronous=true;end.w=84;end.h=80;
+const ref=make('Передать на сборку',1140,380,'Мастер');ref.w=210;ref.referentId=level.nodes[2].id;
+for(const [a,b] of [[start,fork],[fork,cut],[fork,parts],[cut,end],[parts,end],[end,ref]])addArrow(p,scenario,nodeEnd(a.id,'right'),nodeEnd(b.id,'left'),'');
+cut.rate=600;cut.hours=2;cut.frequency=2;parts.cost=500;parts.center='Склад';level.nodes[2].cost=1200;level.nodes[3].cost=300;
+syncInheritance(p);const file=serialize(p);parseProject(file);mkdirSync(process.argv[2],{recursive:true});writeFileSync(join(process.argv[2],'Мебельная мастерская.idef.json'),file);

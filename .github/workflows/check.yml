@@ -18,8 +18,32 @@ jobs:
       - run: node tests/examples-ui.cjs
       - run: node tests/idef1x-ui.cjs
       - run: npx electron-builder --win dir
+      - run: node tests/ports-ui.cjs "release/win-unpacked/IDEF Studio.exe"
+      - run: node tests/local-mixed-ui.cjs "release/win-unpacked/IDEF Studio.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: IDEF-Studio-Windows-x64
           path: release/win-unpacked/
 
+
+  release:
+    if: github.ref == 'refs/tags/v0.6.0'
+    needs: windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: IDEF-Studio-Windows-x64
+          path: windows
+      - run: |
+          cd windows
+          test -f 'IDEF Studio.exe'
+          zip -qr ../IDEF-Studio-Windows-x64.zip .
+      - name: Publish Windows release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha256sum IDEF-Studio-Windows-x64.zip > SHA256.txt
+          gh release create "$GITHUB_REF_NAME" IDEF-Studio-Windows-x64.zip SHA256.txt --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "IDEF Studio 0.6.0" --notes "Смешанные модели IDEF0, DFD и IDEF3, отчёт по модели и дорожки исполнителей, свободные порты стрелок и сворачиваемая панель стоимости. Распакуйте весь архив и запустите IDEF Studio.exe. Учебная модель находится в папке examples."

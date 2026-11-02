@@ -1,6 +1,6 @@
 {
   "name": "idef-studio",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Учебный редактор IDEF0, DFD, IDEF3 и IDEF1X",
   "type": "module",
@@ -57,6 +57,10 @@
       {
         "from": "THIRD_PARTY_NOTICES.txt",
         "to": "THIRD_PARTY_NOTICES.txt"
+      },
+      {
+        "from": "examples",
+        "to": "examples"
       }
     ]
   },

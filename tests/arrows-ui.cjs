@@ -137,7 +137,7 @@ const path = require("node:path");
       .poll(async () => await fs.readFile(migratedPath, "utf8"))
       .toContain('"version": 3');
     const defaultPath = await app.evaluate(() => global.__lastSaveDefault);
-    if (!defaultPath.includes("-v0.5.0"))
+    if (!defaultPath.includes("-v0.6.0"))
       throw Error("Migration does not offer a separate file");
     if ((await fs.readFile(legacyPath, "utf8")) !== original)
       throw Error("Old project was modified");

@@ -1,4 +1,5 @@
-import {attributes} from "./idef1x";
+import { occupied, freeSlot } from "./ports";
+import { attributes } from "./idef1x";
 import { crossingBridges, bridgePath } from "./crossings";
 import { useMemo } from "react";
 import {
@@ -110,6 +111,7 @@ export function DiagramContent({
   onWaypointRemove,
 }: Props) {
   const d = p.diagrams[diagramId];
+  const notation = d.notation ?? p.notation;
   const geometries = useMemo(
     () => new Map(visibleArrows(d).map((a) => [a.id, arrowGeometry(d, a)])),
     [d],
@@ -122,7 +124,17 @@ export function DiagramContent({
     marker = `arrow-${diagramId}`;
   return (
     <>
-      <defs><marker id={`${marker}-er`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6"><circle cx="5" cy="5" r="4" fill="#334155"/></marker>
+      <defs>
+        <marker
+          id={`${marker}-er`}
+          viewBox="0 0 10 10"
+          refX="5"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+        >
+          <circle cx="5" cy="5" r="4" fill="#334155" />
+        </marker>
         <pattern
           id={gridId}
           width="20"
@@ -163,8 +175,7 @@ export function DiagramContent({
         letterSpacing="1.7"
         fill="#8492a6"
       >
-        {p.notation} ·{" "}
-        {diagramId === p.rootId ? "КОНТЕКСТ" : "ДЕКОМПОЗИЦИЯ"}
+        {notation} · {diagramId === p.rootId ? "КОНТЕКСТ" : "ДЕКОМПОЗИЦИЯ"}
       </text>
       <text
         x="1400"
@@ -194,6 +205,37 @@ export function DiagramContent({
         const bp = boundaryEp ? position(d, boundaryEp) : null,
           code = icomCode(p, diagramId, a);
         let labelMax = 25;
+        if (
+          bp &&
+          boundaryEp &&
+          (boundaryEp.side === "bottom" || boundaryEp.side === "top")
+        ) {
+          const edgeSide = boundaryEp.side;
+          const positions = visibleArrows(d)
+            .flatMap((other) => [other.source, other.target])
+            .flatMap((e) =>
+              e?.kind === "boundary" && e.side === edgeSide
+                ? [position(d, e).x]
+                : [],
+            )
+            .sort((x, y) => x - y);
+          const index = positions.indexOf(bp.x),
+            gap = Math.min(
+              bp.x - (positions[index - 1] ?? -Infinity),
+              (positions[index + 1] ?? Infinity) - bp.x,
+            );
+          labelMax = Math.max(8, Math.min(25, Math.floor(gap / 7)));
+          const stagger = gap < 100 ? (index % 3) * 45 : 0;
+          label.x = bp.x + (a.labelDx || 0);
+          label.y =
+            bp.y +
+            (edgeSide === "bottom"
+              ? -18 -
+                stagger -
+                (wrap(p.flows[a.flowId]?.name || "", labelMax).length - 1) * 15
+              : 18 + stagger) +
+            (a.labelDy || 0);
+        }
         if (
           boundaryEp &&
           ["left", "right"].includes(boundaryEp.side) &&
@@ -254,9 +296,15 @@ export function DiagramContent({
                       : "#334155"
               }
               strokeWidth={active ? 2.7 : 1.8}
-              strokeDasharray={pending || geo.blocked || (p.notation==="IDEF1X"&&!a.identifying) ? "7 5" : undefined}
+              strokeDasharray={
+                pending ||
+                geo.blocked ||
+                (notation === "IDEF1X" && !a.identifying)
+                  ? "7 5"
+                  : undefined
+              }
               strokeLinejoin="round"
-              markerEnd={`url(#${marker}${p.notation==="IDEF1X"?"-er":""})`}
+              markerEnd={`url(#${marker}${notation === "IDEF1X" ? "-er" : ""})`}
               pointerEvents="none"
             />
             <g
@@ -288,8 +336,30 @@ export function DiagramContent({
                 )}
               </text>
             </g>
-            {p.notation==="IDEF1X" && a.target && <text x={geo.points.at(-1)!.x-14} y={geo.points.at(-1)!.y-10} fontFamily="Arial" fontSize="12">{({many:"",oneOrMore:"P",zeroOrOne:"Z",one:"1"})[a.cardinality||"many"]}</text>}
-            {p.notation==="IDEF1X" && a.source && !a.identifying && a.optionalParent && <path d={`M${geo.points[0].x} ${geo.points[0].y-5} l5 5 -5 5 -5 -5 Z`} fill="white" stroke="#334155"/>}
+            {notation === "IDEF1X" && a.target && (
+              <text
+                x={geo.points.at(-1)!.x - 14}
+                y={geo.points.at(-1)!.y - 10}
+                fontFamily="Arial"
+                fontSize="12"
+              >
+                {
+                  { many: "", oneOrMore: "P", zeroOrOne: "Z", one: "1" }[
+                    a.cardinality || "many"
+                  ]
+                }
+              </text>
+            )}
+            {notation === "IDEF1X" &&
+              a.source &&
+              !a.identifying &&
+              a.optionalParent && (
+                <path
+                  d={`M${geo.points[0].x} ${geo.points[0].y - 5} l5 5 -5 5 -5 -5 Z`}
+                  fill="white"
+                  stroke="#334155"
+                />
+              )}
             {bp && code && (
               <text
                 data-icom-code={code}
@@ -522,7 +592,14 @@ export function DiagramContent({
               width={n.w}
               height={n.h}
               rx={
-                (p.notation === "IDEF1X" && d.arrows.some(a=>a.identifying && a.target?.kind==="node"&&a.target.nodeId===n.id)) || p.notation === "DFD" && (!n.kind || n.kind === "process")
+                (notation === "IDEF1X" &&
+                  d.arrows.some(
+                    (a) =>
+                      a.identifying &&
+                      a.target?.kind === "node" &&
+                      a.target.nodeId === n.id,
+                  )) ||
+                (notation === "DFD" && (!n.kind || n.kind === "process"))
                   ? 15
                   : 0
               }
@@ -530,7 +607,7 @@ export function DiagramContent({
               stroke={active ? "#4f46e5" : "#334155"}
               strokeWidth={active ? 2.5 : 1.8}
             />
-            {p.notation === "DFD" && n.kind === "store" && (
+            {notation === "DFD" && n.kind === "store" && (
               <>
                 <line
                   x1={n.x + n.w}
@@ -549,7 +626,7 @@ export function DiagramContent({
                 />
               </>
             )}
-            {p.notation === "DFD" && (
+            {notation === "DFD" && (
               <text
                 x={n.x + 12}
                 y={n.y + 20}
@@ -566,14 +643,56 @@ export function DiagramContent({
                       : "Процесс"}
               </text>
             )}
-            {p.notation==="IDEF1X" ? <g><SvgText text={n.name} x={n.x+n.w/2} y={n.y+24} size={16} weight={600}/><line x1={n.x} x2={n.x+n.w} y1={n.y+36} y2={n.y+36} stroke="#334155"/>{attributes(d,n).map((a,i)=><text key={i} x={n.x+12} y={n.y+58+i*21+(a.pk?0:12)} fontFamily="Arial" fontSize="12">{a.name}{a.fk?" (FK)":""}</text>)}<line x1={n.x} x2={n.x+n.w} y1={n.y+46+attributes(d,n).filter(a=>a.pk).length*21} y2={n.y+46+attributes(d,n).filter(a=>a.pk).length*21} stroke="#334155"/></g> : <SvgText
-              text={n.name}
-              x={n.x + n.w / 2}
-              y={n.y + n.h / 2 - (lines.length - 1) * 9 - 2}
-              max={Math.floor((n.w - 32) / 9)}
-              size={16}
-              weight={600}
-            />}
+            {notation === "IDEF1X" ? (
+              <g>
+                <SvgText
+                  text={n.referentId ? "↗ " + n.name : n.name}
+                  x={n.x + n.w / 2}
+                  y={n.y + 24}
+                  size={16}
+                  weight={600}
+                />
+                <line
+                  x1={n.x}
+                  x2={n.x + n.w}
+                  y1={n.y + 36}
+                  y2={n.y + 36}
+                  stroke="#334155"
+                />
+                {attributes(d, n).map((a, i) => (
+                  <text
+                    key={i}
+                    x={n.x + 12}
+                    y={n.y + 58 + i * 21 + (a.pk ? 0 : 12)}
+                    fontFamily="Arial"
+                    fontSize="12"
+                  >
+                    {a.name}
+                    {a.fk ? " (FK)" : ""}
+                  </text>
+                ))}
+                <line
+                  x1={n.x}
+                  x2={n.x + n.w}
+                  y1={
+                    n.y + 46 + attributes(d, n).filter((a) => a.pk).length * 21
+                  }
+                  y2={
+                    n.y + 46 + attributes(d, n).filter((a) => a.pk).length * 21
+                  }
+                  stroke="#334155"
+                />
+              </g>
+            ) : (
+              <SvgText
+                text={n.name}
+                x={n.x + n.w / 2}
+                y={n.y + n.h / 2 - (lines.length - 1) * 9 - 2}
+                max={Math.floor((n.w - 32) / 9)}
+                size={16}
+                weight={600}
+              />
+            )}
             <text
               x={n.x + n.w - 10}
               y={n.y + n.h - 10}
@@ -584,6 +703,13 @@ export function DiagramContent({
             >
               {blockCode(p, diagramId, n.id)}
             </text>
+            {n.synchronous && (
+              <g stroke="#334155">
+                <path
+                  d={`M${n.x + 4} ${n.y + 7}h${n.w - 8}m-${n.w - 8} 4h${n.w - 8}`}
+                />
+              </g>
+            )}
             {n.childId && (
               <g>
                 <rect
@@ -602,32 +728,102 @@ export function DiagramContent({
               </g>
             )}
             {interactive &&
-              sides.flatMap((side) =>
-                [0.25, 0.5, 0.75].map((at) => {
-                  const ep: Endpoint = { kind: "node", nodeId: n.id, side, at };
-                  const pt = position(d, ep);
-                  return (
-                    <circle
-                      key={`${side}${at}`}
-                      className={`node-port ${connecting || active ? "visible" : ""}`}
-                      cx={pt.x}
-                      cy={pt.y}
-                      r="5"
-                      fill="white"
-                      stroke={side === "right" ? "#059669" : "#6366f1"}
-                      strokeWidth="2"
+              sides.map((side) => {
+                const horizontal = side === "top" || side === "bottom";
+                const used = occupied(d, n.id, side);
+                const count = Math.max(
+                  2,
+                  Math.floor((horizontal ? n.w : n.h) / 40),
+                );
+                const stops = [
+                  ...new Set([
+                    ...used,
+                    freeSlot(used),
+                    ...Array.from(
+                      { length: count - 1 },
+                      (_, i) => (i + 1) / count,
+                    ),
+                  ]),
+                ];
+                const start = position(d, {
+                  kind: "node",
+                  nodeId: n.id,
+                  side,
+                  at: 0,
+                });
+                const end = position(d, {
+                  kind: "node",
+                  nodeId: n.id,
+                  side,
+                  at: 1,
+                });
+                return (
+                  <g key={side}>
+                    <line
+                      x1={start.x}
+                      y1={start.y}
+                      x2={end.x}
+                      y2={end.y}
+                      stroke="transparent"
+                      strokeWidth={12}
+                      style={{ cursor: "crosshair" }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onPort?.(e, ep);
+                        const svg = e.currentTarget.ownerSVGElement!;
+                        const point = svg.createSVGPoint();
+                        point.x = e.clientX;
+                        point.y = e.clientY;
+                        const matrix = svg.getScreenCTM();
+                        if (!matrix) return;
+                        const click = point.matrixTransform(matrix.inverse());
+                        const offset = horizontal
+                          ? (click.x - n.x) / n.w
+                          : (click.y - n.y) / n.h;
+                        onPort?.(e, {
+                          kind: "node",
+                          nodeId: n.id,
+                          side,
+                          at: Math.max(0.01, Math.min(0.99, offset)),
+                        });
                       }}
-                      style={{ cursor: "crosshair" }}
                     >
-                      <title>{sideNames[side]} · нажмите для соединения</title>
-                    </circle>
-                  );
-                }),
-              )}
+                      <title>Подключить в этом месте стороны</title>
+                    </line>
+                    {stops.map((at) => {
+                      const ep: Endpoint = {
+                        kind: "node",
+                        nodeId: n.id,
+                        side,
+                        at,
+                      };
+                      const pt = position(d, ep);
+                      return (
+                        <circle
+                          key={`${side}${at}`}
+                          className={`node-port ${connecting || active ? "visible" : ""}`}
+                          cx={pt.x}
+                          cy={pt.y}
+                          r="5"
+                          fill="white"
+                          stroke={side === "right" ? "#059669" : "#6366f1"}
+                          strokeWidth="2"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPort?.(e, ep);
+                          }}
+                          style={{ cursor: "crosshair" }}
+                        >
+                          <title>
+                            {sideNames[side]} · нажмите для соединения
+                          </title>
+                        </circle>
+                      );
+                    })}
+                  </g>
+                );
+              })}
           </g>
         );
       })}
@@ -669,7 +865,7 @@ export function DiagramContent({
       )}
       {interactive &&
         connecting &&
-        p.notation !== "DFD" &&
+        notation !== "DFD" &&
         sides.map((side) => {
           const pt: Point =
             side === "left"
@@ -726,7 +922,7 @@ export function DiagramContent({
         fontSize="11"
         fill="#94a3b8"
       >
-        {p.author || "Учебная модель"} · {p.notation}
+        {p.author || "Учебная модель"} · {notation}
       </text>
       <text
         x="720"

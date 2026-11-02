@@ -60,6 +60,13 @@ export function syncDfd(p: Project): void {
       if (!n.childId) continue;
       const child = p.diagrams[n.childId];
       if (!child) continue;
+      if (
+        (child.notation ?? p.notation) !== "DFD" ||
+        (d.notation ?? p.notation) !== "DFD"
+      ) {
+        visit(child.id);
+        continue;
+      }
       const attached = d.arrows.filter(
         (a) =>
           (a.source?.kind === "node" && a.source.nodeId === n.id) ||
@@ -159,9 +166,12 @@ export function syncDfd(p: Project): void {
   };
   visit(p.rootId);
 }
-export function validateDfd(p: Project): Issue[] {
+export function validateDfd(
+  p: Project,
+  diagrams = Object.values(p.diagrams),
+): Issue[] {
   const issues: Issue[] = [];
-  for (const d of Object.values(p.diagrams)) {
+  for (const d of diagrams) {
     const add = (text: string, objectId?: string) =>
       issues.push({ diagramId: d.id, objectId, text });
     if (

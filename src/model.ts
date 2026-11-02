@@ -14,15 +14,23 @@ import {
   kindOf,
   type NodeKind,
 } from "./dfd";
-import {attributes} from './idef1x';
+import { attributes } from "./idef1x";
 export type Notation = "IDEF0" | "DFD" | "IDEF3" | "IDEF1X";
 export type Side = "left" | "top" | "right" | "bottom";
 export type Endpoint =
   | { kind: "node"; nodeId: string; side: Side; at: number }
   | { kind: "boundary"; side: Side; at: number };
 export type Block = {
- attributes?: string;
- junction?: "AND"|"OR"|"XOR";
+  center?: string;
+  rate?: number;
+  hours?: number;
+  frequency?: number;
+  role?: string;
+  cost?: number;
+  synchronous?: boolean;
+  referentId?: string;
+  attributes?: string;
+  junction?: "AND" | "OR" | "XOR";
   id: string;
   name: string;
   x: number;
@@ -36,9 +44,9 @@ export type Block = {
   contextOf?: string;
 };
 export type Arrow = {
- identifying?: boolean;
- cardinality?: "many"|"oneOrMore"|"zeroOrOne"|"one";
- optionalParent?: boolean;
+  identifying?: boolean;
+  cardinality?: "many" | "oneOrMore" | "zeroOrOne" | "one";
+  optionalParent?: boolean;
   id: string;
   flowId: string;
   source: Endpoint | null;
@@ -56,6 +64,7 @@ export type Arrow = {
   inheritedDirection?: "in" | "out";
 };
 export type Diagram = {
+  notation?: Notation;
   id: string;
   parentDiagramId?: string;
   parentNodeId?: string;
@@ -72,7 +81,7 @@ export type Project = {
   author: string;
   rootId: string;
   diagrams: Record<string, Diagram>;
-  flows: Record<string, { name: string }>;
+  flows: Record<string, { name: string; definition?: string }>;
 };
 export const PAGE = {
   w: 1440,
@@ -120,6 +129,9 @@ export function newProject(
     flows: {},
   };
 }
+export function notationOf(p: Project, did: string): Notation {
+  return p.diagrams[did]?.notation ?? p.notation;
+}
 export function addBlock(
   p: Project,
   did: string,
@@ -138,7 +150,7 @@ export function addBlock(
     color: "#ffffff",
     description: "",
   };
-  if (p.notation === "DFD") {
+  if (notationOf(p, did) === "DFD") {
     b.kind = kind;
     if (kind === "entity") b.color = "#edf2f8";
     if (kind === "store") {
@@ -146,7 +158,11 @@ export function addBlock(
       b.h = 85;
     }
   }
-  if(p.notation==="IDEF1X"){b.w=280;b.h=220;b.attributes="PK id\nНазвание";}
+  if (notationOf(p, did) === "IDEF1X") {
+    b.w = 280;
+    b.h = 220;
+    b.attributes = "PK id\nНазвание";
+  }
   p.diagrams[did].nodes.push(b);
   return b;
 }
@@ -157,14 +173,14 @@ export function addArrow(
   target: Endpoint | null,
   name = "Новый поток",
 ): Arrow {
-  if (p.notation === "DFD") {
+  if (notationOf(p, did) === "DFD") {
     const error = dfdConnectionError(p.diagrams[did], source, target);
     if (error) throw Error(error);
   }
   const flowId = uid();
   p.flows[flowId] = { name };
   const a: Arrow = { id: uid(), flowId, source, target };
-  if (p.notation === "IDEF0" && did !== p.rootId) {
+  if (notationOf(p, did) === "IDEF0" && did !== p.rootId) {
     if (source?.kind === "boundary") a.tunnelSource = true;
     if (target?.kind === "boundary") a.tunnelTarget = true;
   }
@@ -184,7 +200,7 @@ export function setTunnel(
   which: "source" | "target",
   value: boolean,
 ): void {
-  if (p.notation === "DFD")
+  if (notationOf(p, did) === "DFD")
     throw Error(
       "Туннели относятся к IDEF0. В DFD сохраняйте баланс потоков между уровнями.",
     );
@@ -200,7 +216,7 @@ export function icomCode(
   did: string,
   a: Arrow,
 ): string | undefined {
-  if (p.notation !== "IDEF0") return;
+  if (notationOf(p, did) !== "IDEF0") return;
   const d = p.diagrams[did];
   if (!a.originArrowId || !d.parentDiagramId) return;
   const parent = p.diagrams[d.parentDiagramId],
@@ -219,9 +235,10 @@ export function icomCode(
 }
 export function diagramCode(p: Project, did: string): string {
   const d = p.diagrams[did];
- if(p.notation==="IDEF1X")return "Модель данных";
- if(p.notation==="IDEF3")return d.parentNodeId ? "Декомпозиция" : "Сценарий";
-  if (p.notation === "DFD")
+  if (notationOf(p, did) === "IDEF1X") return "Модель данных";
+  if (notationOf(p, did) === "IDEF3")
+    return d.parentNodeId ? "Декомпозиция" : "Сценарий";
+  if (notationOf(p, did) === "DFD")
     return d.parentDiagramId
       ? `DFD ${dfdBlockCode(p, d.parentDiagramId, d.parentNodeId!)}`
       : "Контекст";
@@ -229,9 +246,10 @@ export function diagramCode(p: Project, did: string): string {
   return blockCode(p, d.parentDiagramId, d.parentNodeId!);
 }
 export function blockCode(p: Project, did: string, nid: string): string {
- if(p.notation==="IDEF1X")return "";
- if(p.notation==="IDEF3")return String(p.diagrams[did].nodes.findIndex(n=>n.id===nid)+1);
-  if (p.notation === "DFD") return dfdBlockCode(p, did, nid);
+  if (notationOf(p, did) === "IDEF1X") return "";
+  if (notationOf(p, did) === "IDEF3")
+    return String(p.diagrams[did].nodes.findIndex((n) => n.id === nid) + 1);
+  if (notationOf(p, did) === "DFD") return dfdBlockCode(p, did, nid);
   const d = p.diagrams[did];
   const i = d.nodes.findIndex((n) => n.id === nid);
   return did === p.rootId
@@ -258,16 +276,24 @@ export function decompose(
   did: string,
   nid: string,
   count = 3,
+  notation: Notation = notationOf(p, did),
 ): string {
-  if(p.notation==="IDEF1X")throw Error("Сущности не декомпозируются");
+  if (notationOf(p, did) === "IDEF1X")
+    throw Error("Сущности не декомпозируются");
   const n = p.diagrams[did].nodes.find((n) => n.id === nid);
   if (!n) throw Error("Функция не найдена");
-  if (p.notation === "DFD" && (kindOf(n) !== "process" || n.contextOf))
+  if (notationOf(p, did) === "DFD" && (kindOf(n) !== "process" || n.contextOf))
     throw Error("Декомпозиция доступна только для локальных процессов.");
   if (n.childId) return n.childId;
+  if (
+    notation !== notationOf(p, did) &&
+    !(notationOf(p, did) === "IDEF0" && ["DFD", "IDEF3"].includes(notation))
+  )
+    throw Error("Переход между нотациями недоступен");
   const id = uid();
   p.diagrams[id] = {
     id,
+    ...(notation !== p.notation ? { notation } : {}),
     parentDiagramId: did,
     parentNodeId: nid,
     nodes: [],
@@ -278,13 +304,13 @@ export function decompose(
     addBlock(
       p,
       id,
-      `${p.notation === "DFD" ? "Процесс" : "Функция"} ${i + 1}`,
-      p.notation === "DFD"
+      `${notation === "DFD" ? "Процесс" : notation === "IDEF3" ? "Действие" : "Функция"} ${i + 1}`,
+      notationOf(p, did) === "DFD"
         ? 350 + (i % 3) * 270
         : count > 4
           ? 200 + (i % 3) * 370
           : 220 + i * 260,
-      p.notation === "DFD"
+      notationOf(p, did) === "DFD"
         ? 275 + Math.floor(i / 3) * 230
         : count > 4
           ? 240 + Math.floor(i / 3) * 280
@@ -295,12 +321,14 @@ export function decompose(
 }
 // Boundary continuations refer to a parent arrow and share its flow, never copied labels.
 export function syncInheritance(p: Project): void {
- if(p.notation==='IDEF1X'){for(const d of Object.values(p.diagrams))for(const n of d.nodes)n.h=Math.max(n.h,90+attributes(d,n).length*21);return;}
- if(p.notation==="IDEF3")return;
-  if (p.notation === "DFD") {
-    syncDfd(p);
+  if (p.notation === "IDEF1X") {
+    for (const d of Object.values(p.diagrams))
+      for (const n of d.nodes)
+        n.h = Math.max(n.h, 90 + attributes(d, n).length * 21);
     return;
   }
+  if (Object.values(p.diagrams).some((d) => notationOf(p, d.id) === "DFD"))
+    syncDfd(p);
   const visit = (did: string) => {
     const d = p.diagrams[did];
     for (const a of d.arrows) if (!a.originArrowId) delete a.suppressed;
@@ -308,6 +336,13 @@ export function syncInheritance(p: Project): void {
       if (!n.childId) continue;
       const child = p.diagrams[n.childId];
       if (!child) continue;
+      if (
+        notationOf(p, did) !== "IDEF0" ||
+        notationOf(p, child.id) !== "IDEF0"
+      ) {
+        visit(child.id);
+        continue;
+      }
       const attached = d.arrows.filter((a) => touchingSide(a, n.id));
       const ids = new Set(attached.map((a) => a.id));
       child.arrows = child.arrows.filter(
@@ -710,17 +745,55 @@ export function resetRoute(a: Arrow): void {
 }
 export type Issue = { diagramId: string; objectId?: string; text: string };
 export function validate(p: Project): Issue[] {
- if(p.notation==='IDEF1X'){
- const issues:Issue[]=[];
- for(const d of Object.values(p.diagrams)){
- for(const n of d.nodes){const rows=attributes(d,n);if(!rows.some(a=>a.pk))issues.push({diagramId:d.id,objectId:n.id,text:'У сущности нет первичного ключа.'});if(new Set(rows.map(a=>a.name.toLowerCase())).size!==rows.length)issues.push({diagramId:d.id,objectId:n.id,text:'Повторяющиеся имена атрибутов.'});}
- for(const a of d.arrows)if(!a.source||!a.target)issues.push({diagramId:d.id,objectId:a.id,text:'Связь сущностей не подключена.'});
- }return issues;
- }
- if(p.notation==="IDEF3")return Object.values(p.diagrams).flatMap(d=>d.arrows.filter(a=>!a.source||!a.target).map(a=>({diagramId:d.id,objectId:a.id,text:"Связь предшествования не подключена."})));
+  return Object.values(p.diagrams).flatMap((d) =>
+    validateDiagram({ ...p, notation: notationOf(p, d.id) }, d),
+  );
+}
+function validateDiagram(p: Project, diagram: Diagram): Issue[] {
+  if (p.notation === "IDEF1X") {
+    const issues: Issue[] = [];
+    for (const d of [diagram]) {
+      for (const n of d.nodes) {
+        const rows = attributes(d, n);
+        if (!rows.some((a) => a.pk))
+          issues.push({
+            diagramId: d.id,
+            objectId: n.id,
+            text: "У сущности нет первичного ключа.",
+          });
+        if (new Set(rows.map((a) => a.name.toLowerCase())).size !== rows.length)
+          issues.push({
+            diagramId: d.id,
+            objectId: n.id,
+            text: "Повторяющиеся имена атрибутов.",
+          });
+      }
+      for (const a of d.arrows)
+        if (!a.source || !a.target)
+          issues.push({
+            diagramId: d.id,
+            objectId: a.id,
+            text: "Связь сущностей не подключена.",
+          });
+    }
+    return issues;
+  }
+  if (p.notation === "IDEF3") {
+    const issues: Issue[] = [];
+    for(const a of diagram.arrows) if(!a.source || !a.target)issues.push({diagramId:diagram.id,objectId:a.id,text:"Связь предшествования не подключена."});
+    for(const n of diagram.nodes){
+      if(n.referentId && !Object.values(p.diagrams).some(d=>d.id===n.referentId || d.nodes.some(x=>x.id===n.referentId)))issues.push({diagramId:diagram.id,objectId:n.id,text:"Объект референта был удалён. Выберите другую ссылку."});
+      if(n.synchronous){
+        const incoming=diagram.arrows.filter(a=>a.target?.kind==="node" && a.target.nodeId===n.id).length;
+        const outgoing=diagram.arrows.filter(a=>a.source?.kind==="node" && a.source.nodeId===n.id).length;
+        if(!["AND","OR"].includes(n.junction||"") || !(incoming===1 && outgoing>=2 || outgoing===1 && incoming>=2))issues.push({diagramId:diagram.id,objectId:n.id,text:"Синхронный AND/OR должен соединять одну ветвь с несколькими."});
+      }
+    }
+    return issues;
+  }
   if (p.notation === "DFD") {
-    const issues = validateDfd(p);
-    for (const d of Object.values(p.diagrams))
+    const issues = validateDfd(p, [diagram]);
+    for (const d of [diagram])
       for (const a of d.arrows)
         if (a.source && a.target) {
           const g = arrowGeometry(d, a);
@@ -730,7 +803,7 @@ export function validate(p: Project): Issue[] {
     return issues;
   }
   const out: Issue[] = [];
-  for (const d of Object.values(p.diagrams)) {
+  for (const d of [diagram]) {
     if (d.id === p.rootId && d.nodes.length !== 1)
       out.push({
         diagramId: d.id,
@@ -808,7 +881,24 @@ export function validate(p: Project): Issue[] {
   return out;
 }
 export function serialize(p: Project): string {
-  return JSON.stringify(p, null, 2);
+  const extended =
+    Object.values(p.diagrams).some(
+      (d) =>
+        d.notation ||
+        d.nodes.some((n) =>
+          [
+            n.cost,
+            n.role,
+            n.rate,
+            n.hours,
+            n.frequency,
+            n.center,
+            n.referentId,
+            n.synchronous,
+          ].some((v) => v !== undefined),
+        ),
+    ) || Object.values(p.flows).some((f) => f.definition !== undefined);
+  return JSON.stringify({ ...p, version: extended ? 4 : 3 }, null, 2);
 }
 export function parseProject(text: string): Project {
   if (text.length > 20_000_000)
@@ -822,10 +912,8 @@ export function parseProject(text: string): Project {
   const fail = () => {
     throw Error("Некорректный проект IDEF Studio.");
   };
-  if (!p || p.format !== "idef-studio" || ![1, 2, 3].includes(p.version))
-    throw Error(
-      "Нужен файл проекта IDEF Studio версии 1, 2 или 3 (.idef.json).",
-    );
+  if (!p || p.format !== "idef-studio" || ![1, 2, 3, 4].includes(p.version))
+    throw Error("Нужен файл проекта IDEF Studio версии 1–4 (.idef.json).");
   const legacy = (p.version as number) === 1;
   if ((p.version as number) < 3) {
     p.notation = "IDEF0";
@@ -869,10 +957,33 @@ export function parseProject(text: string): Project {
       d.arrows.length > 4000
     )
       fail();
+    if (
+      d.notation !== undefined &&
+      !["IDEF0", "DFD", "IDEF3"].includes(d.notation)
+    )
+      fail();
     reg(id);
     for (const n of d.nodes) {
       reg(n.id);
- if(n.attributes!==undefined && (typeof n.attributes!=="string"||n.attributes.length>10000))fail();
+      if (
+        [n.rate, n.hours, n.frequency].some(
+          (v) => v !== undefined && (!Number.isFinite(v) || v < 0),
+        ) ||
+        (n.center !== undefined && typeof n.center !== "string")
+      )
+        fail();
+      if (
+        (n.role !== undefined && typeof n.role !== "string") ||
+        (n.cost !== undefined && (!Number.isFinite(n.cost) || n.cost < 0)) ||
+        (n.referentId !== undefined && typeof n.referentId !== "string") ||
+        (n.synchronous !== undefined && typeof n.synchronous !== "boolean")
+      )
+        fail();
+      if (
+        n.attributes !== undefined &&
+        (typeof n.attributes !== "string" || n.attributes.length > 10000)
+      )
+        fail();
       if (
         n.kind !== undefined &&
         !["process", "entity", "store"].includes(n.kind)
@@ -881,12 +992,13 @@ export function parseProject(text: string): Project {
       if (
         n.contextOf !== undefined &&
         (typeof n.contextOf !== "string" ||
-          p.notation !== "DFD" ||
+          notationOf(p, d.id) !== "DFD" ||
           kindOf(n) === "process" ||
           n.childId)
       )
         fail();
-      if (p.notation === "IDEF0" && n.kind && n.kind !== "process") fail();
+      if (notationOf(p, d.id) === "IDEF0" && n.kind && n.kind !== "process")
+        fail();
       if (n.childId && kindOf(n) !== "process") fail();
       if (
         typeof n.name !== "string" ||
@@ -901,9 +1013,18 @@ export function parseProject(text: string): Project {
     }
     for (const a of d.arrows) {
       reg(a.id);
- if(a.cardinality!==undefined&&!["many","oneOrMore","zeroOrOne","one"].includes(a.cardinality))fail();
- if(a.optionalParent!==undefined&&typeof a.optionalParent!=="boolean")fail();
- if(a.identifying!==undefined&&typeof a.identifying!=="boolean")fail();
+      if (
+        a.cardinality !== undefined &&
+        !["many", "oneOrMore", "zeroOrOne", "one"].includes(a.cardinality)
+      )
+        fail();
+      if (
+        a.optionalParent !== undefined &&
+        typeof a.optionalParent !== "boolean"
+      )
+        fail();
+      if (a.identifying !== undefined && typeof a.identifying !== "boolean")
+        fail();
       if (
         !Object.hasOwn(p.flows, a.flowId) ||
         typeof p.flows[a.flowId].name !== "string" ||
@@ -918,7 +1039,7 @@ export function parseProject(text: string): Project {
       )
         fail();
       if (
-        p.notation === "DFD" &&
+        notationOf(p, d.id) === "DFD" &&
         (a.tunnelSource ||
           a.tunnelTarget ||
           a.suppressed ||
@@ -957,7 +1078,7 @@ export function parseProject(text: string): Project {
         if (ep.kind === "node" && !d.nodes.some((n) => n.id === ep.nodeId))
           fail();
         if (
-          p.notation === "IDEF0" &&
+          notationOf(p, d.id) === "IDEF0" &&
           (isSource
             ? ep.kind === "node"
               ? ep.side !== "right"
@@ -970,6 +1091,9 @@ export function parseProject(text: string): Project {
       }
     }
   }
+  for (const flow of Object.values(p.flows))
+    if (flow.definition !== undefined && typeof flow.definition !== "string")
+      fail();
   const visited = new Set<string>();
   const walk = (id: string) => {
     if (visited.has(id)) fail();
@@ -994,7 +1118,7 @@ export function parseProject(text: string): Project {
       if (a.originArrowId) {
         const parent = p.diagrams[d.parentDiagramId!];
         const origin = parent?.arrows.find((x) => x.id === a.originArrowId);
-        if (p.notation === "DFD") {
+        if (notationOf(p, d.id) === "DFD") {
           if (!origin || a.flowId !== origin.flowId) fail();
           const incoming =
             origin!.target?.kind === "node" &&

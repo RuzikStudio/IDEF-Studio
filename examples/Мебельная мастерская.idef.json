@@ -1,0 +1,933 @@
+{
+  "format": "idef-studio",
+  "version": 4,
+  "notation": "IDEF0",
+  "showCrossings": true,
+  "title": "Изготовление мебели на заказ",
+  "organization": "Учебная мебельная мастерская",
+  "author": "Учебная модель",
+  "rootId": "7fc018a6-2d1b-4610-bc73-f3dd7043ba61",
+  "diagrams": {
+    "7fc018a6-2d1b-4610-bc73-f3dd7043ba61": {
+      "id": "7fc018a6-2d1b-4610-bc73-f3dd7043ba61",
+      "nodes": [
+        {
+          "id": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+          "name": "Изготовление мебели на заказ",
+          "x": 500,
+          "y": 345,
+          "w": 440,
+          "h": 150,
+          "color": "#fff4ce",
+          "description": "Изготовить и передать заказчику мебель: от требований и материалов до готового изделия.",
+          "childId": "2cca5183-9ecd-4c45-b913-a1878fd0bb91"
+        }
+      ],
+      "arrows": [
+        {
+          "id": "483dbfd8-07b7-441e-a4cb-6f35e42306e2",
+          "flowId": "8b11b99d-6d0d-46ea-bd0d-4ba79bd22f79",
+          "source": {
+            "kind": "boundary",
+            "side": "left",
+            "at": 0.44360902255639095
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "left",
+            "at": 0.3333333333333333
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "bbfdd3f1-95df-4b0e-9c14-d55608d9a917",
+          "flowId": "beb56439-a17c-42eb-b204-21a0110da53a",
+          "source": {
+            "kind": "boundary",
+            "side": "left",
+            "at": 0.518796992481203
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "left",
+            "at": 0.6666666666666666
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "27bf3aaa-5de6-4ff7-80f3-80910b9dbdcb",
+          "flowId": "b98f5b54-a1f4-4b66-b34b-c294ebd12266",
+          "source": {
+            "kind": "boundary",
+            "side": "top",
+            "at": 0.41729323308270677
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "top",
+            "at": 0.25
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "9244eb8d-5450-4fd1-a9fc-03885d7ba3a9",
+          "flowId": "118d8814-12aa-4fc3-bb96-e684bf6d4a18",
+          "source": {
+            "kind": "boundary",
+            "side": "top",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "top",
+            "at": 0.5
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "0d96b9b7-5a70-42cb-831d-e36e10e8a51a",
+          "flowId": "0dee86ae-3a21-405b-ae58-90b7a3de07ff",
+          "source": {
+            "kind": "boundary",
+            "side": "top",
+            "at": 0.5827067669172933
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "top",
+            "at": 0.75
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "c6c0c72a-d671-4ac9-aac1-da991eb87baf",
+          "flowId": "c37d6760-1c5f-4465-bf61-739a833b466c",
+          "source": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "right",
+            "at": 0.3333333333333333
+          },
+          "target": {
+            "kind": "boundary",
+            "side": "right",
+            "at": 0.44360902255639095
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "ea8512a7-3bcb-4218-9dc0-11c80fbac32b",
+          "flowId": "7fe3ea6d-5321-40a5-b7de-72613e369a9b",
+          "source": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "right",
+            "at": 0.6666666666666666
+          },
+          "target": {
+            "kind": "boundary",
+            "side": "right",
+            "at": 0.518796992481203
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "50319dac-4cea-47ce-afbe-31eec6931c86",
+          "flowId": "8f4059ac-c9df-4fcc-906e-82da23ce3ecf",
+          "source": {
+            "kind": "boundary",
+            "side": "bottom",
+            "at": 0.41729323308270677
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "bottom",
+            "at": 0.25
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "21f054c6-8309-4bc3-b061-35be21fba10c",
+          "flowId": "fe456cb1-3d59-437b-b153-323d1c56b366",
+          "source": {
+            "kind": "boundary",
+            "side": "bottom",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "bottom",
+            "at": 0.5
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "627e8e30-2e22-428f-a97d-e9e6a754c2e2",
+          "flowId": "a48d0764-6209-48b4-8feb-9b3f97bd8133",
+          "source": {
+            "kind": "boundary",
+            "side": "bottom",
+            "at": 0.5827067669172933
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+            "side": "bottom",
+            "at": 0.75
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        }
+      ]
+    },
+    "2cca5183-9ecd-4c45-b913-a1878fd0bb91": {
+      "id": "2cca5183-9ecd-4c45-b913-a1878fd0bb91",
+      "parentDiagramId": "7fc018a6-2d1b-4610-bc73-f3dd7043ba61",
+      "parentNodeId": "64acd41b-f25f-4dd0-9bb5-ece91e21bb10",
+      "nodes": [
+        {
+          "id": "73df878f-f4c0-4983-83d0-f14a8a261d39",
+          "name": "Согласовать заказ и подготовить материалы",
+          "x": 185,
+          "y": 205,
+          "w": 235,
+          "h": 105,
+          "color": "#ffffff",
+          "description": "",
+          "childId": "edf46754-9f15-4608-b541-21a282f34055"
+        },
+        {
+          "id": "413357ea-3d5a-4d53-9cdb-4c517f8f6214",
+          "name": "Изготовить детали мебели",
+          "x": 475,
+          "y": 345,
+          "w": 235,
+          "h": 105,
+          "color": "#fff4ce",
+          "description": "",
+          "childId": "19488031-586e-46b4-9bfc-25b505e6066e"
+        },
+        {
+          "id": "9c195b37-f455-44ef-ac62-f90438394068",
+          "name": "Собрать и проверить изделие",
+          "x": 765,
+          "y": 485,
+          "w": 235,
+          "h": 105,
+          "color": "#ffffff",
+          "description": "",
+          "cost": 1200
+        },
+        {
+          "id": "3263c3b7-d45f-4418-b089-09f1c9752c6c",
+          "name": "Упаковать и передать заказ",
+          "x": 1055,
+          "y": 625,
+          "w": 235,
+          "h": 105,
+          "color": "#ffffff",
+          "description": "",
+          "cost": 300
+        }
+      ],
+      "arrows": [
+        {
+          "id": "72ccb3d2-c03e-40ef-ba6c-3956aca4a0c7",
+          "flowId": "8b11b99d-6d0d-46ea-bd0d-4ba79bd22f79",
+          "source": {
+            "kind": "boundary",
+            "side": "left",
+            "at": 0.21
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "73df878f-f4c0-4983-83d0-f14a8a261d39",
+            "side": "left",
+            "at": 0.35
+          },
+          "originArrowId": "483dbfd8-07b7-441e-a4cb-6f35e42306e2",
+          "inheritedSide": "left",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "6e369f09-5e56-41ea-91ab-716174b2981b",
+          "flowId": "beb56439-a17c-42eb-b204-21a0110da53a",
+          "source": {
+            "kind": "boundary",
+            "side": "left",
+            "at": 0.27
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "73df878f-f4c0-4983-83d0-f14a8a261d39",
+            "side": "left",
+            "at": 0.7
+          },
+          "originArrowId": "bbfdd3f1-95df-4b0e-9c14-d55608d9a917",
+          "inheritedSide": "left",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "5c980db0-e7a9-4532-bc13-4fb803033e98",
+          "flowId": "b98f5b54-a1f4-4b66-b34b-c294ebd12266",
+          "source": {
+            "kind": "boundary",
+            "side": "top",
+            "at": 0.18571428571428572
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "73df878f-f4c0-4983-83d0-f14a8a261d39",
+            "side": "top",
+            "at": 0.5
+          },
+          "originArrowId": "27bf3aaa-5de6-4ff7-80f3-80910b9dbdcb",
+          "inheritedSide": "top",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "d3fa850c-cf8c-4149-a590-f835cdc05cb9",
+          "flowId": "118d8814-12aa-4fc3-bb96-e684bf6d4a18",
+          "source": {
+            "kind": "boundary",
+            "side": "top",
+            "at": 0.6218045112781955
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "9c195b37-f455-44ef-ac62-f90438394068",
+            "side": "top",
+            "at": 0.5
+          },
+          "originArrowId": "9244eb8d-5450-4fd1-a9fc-03885d7ba3a9",
+          "inheritedSide": "top",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "a9094865-4a95-4d8d-b8de-0b262406a3f8",
+          "flowId": "0dee86ae-3a21-405b-ae58-90b7a3de07ff",
+          "source": {
+            "kind": "boundary",
+            "side": "top",
+            "at": 0.4037593984962406
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "413357ea-3d5a-4d53-9cdb-4c517f8f6214",
+            "side": "top",
+            "at": 0.5
+          },
+          "originArrowId": "0d96b9b7-5a70-42cb-831d-e36e10e8a51a",
+          "inheritedSide": "top",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "84c79dcf-7b61-4351-8dc2-807f90a8fbed",
+          "flowId": "c37d6760-1c5f-4465-bf61-739a833b466c",
+          "source": {
+            "kind": "node",
+            "nodeId": "3263c3b7-d45f-4418-b089-09f1c9752c6c",
+            "side": "right",
+            "at": 0.7
+          },
+          "target": {
+            "kind": "boundary",
+            "side": "right",
+            "at": 0.85
+          },
+          "originArrowId": "c6c0c72a-d671-4ac9-aac1-da991eb87baf",
+          "inheritedSide": "right",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "987ac2e4-dbbe-4ce8-8ac5-0f0416f9599b",
+          "flowId": "7fe3ea6d-5321-40a5-b7de-72613e369a9b",
+          "source": {
+            "kind": "node",
+            "nodeId": "413357ea-3d5a-4d53-9cdb-4c517f8f6214",
+            "side": "right",
+            "at": 0.7
+          },
+          "target": {
+            "kind": "boundary",
+            "side": "right",
+            "at": 0.58
+          },
+          "originArrowId": "ea8512a7-3bcb-4218-9dc0-11c80fbac32b",
+          "inheritedSide": "right",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "9f843c1a-e791-44f4-8ccf-5c04841d6938",
+          "flowId": "8f4059ac-c9df-4fcc-906e-82da23ce3ecf",
+          "source": {
+            "kind": "boundary",
+            "side": "bottom",
+            "at": 0.16541353383458646
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "73df878f-f4c0-4983-83d0-f14a8a261d39",
+            "side": "bottom",
+            "at": 0.38
+          },
+          "originArrowId": "50319dac-4cea-47ce-afbe-31eec6931c86",
+          "inheritedSide": "bottom",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "b13809e5-c13b-462c-83e2-c095113441ac",
+          "flowId": "fe456cb1-3d59-437b-b153-323d1c56b366",
+          "source": {
+            "kind": "boundary",
+            "side": "bottom",
+            "at": 0.6015037593984962
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "9c195b37-f455-44ef-ac62-f90438394068",
+            "side": "bottom",
+            "at": 0.38
+          },
+          "originArrowId": "21f054c6-8309-4bc3-b061-35be21fba10c",
+          "inheritedSide": "bottom",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "40b27c9c-59c9-449c-b4a9-ef5e59dfd90c",
+          "flowId": "a48d0764-6209-48b4-8feb-9b3f97bd8133",
+          "source": {
+            "kind": "boundary",
+            "side": "bottom",
+            "at": 0.38345864661654133
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "413357ea-3d5a-4d53-9cdb-4c517f8f6214",
+            "side": "bottom",
+            "at": 0.38
+          },
+          "originArrowId": "627e8e30-2e22-428f-a97d-e9e6a754c2e2",
+          "inheritedSide": "bottom",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "8be52f80-ef73-4276-9641-4f02baaf25cc",
+          "flowId": "b7990e92-55c9-45e5-ab57-aaae35e5d46e",
+          "source": {
+            "kind": "node",
+            "nodeId": "73df878f-f4c0-4983-83d0-f14a8a261d39",
+            "side": "right",
+            "at": 0.35
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "413357ea-3d5a-4d53-9cdb-4c517f8f6214",
+            "side": "top",
+            "at": 0.28
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "855b8913-0a2a-4934-9015-b441f87165eb",
+          "flowId": "4fd5bf65-4fa8-4558-8aae-056136b48272",
+          "source": {
+            "kind": "node",
+            "nodeId": "73df878f-f4c0-4983-83d0-f14a8a261d39",
+            "side": "right",
+            "at": 0.73
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "413357ea-3d5a-4d53-9cdb-4c517f8f6214",
+            "side": "left",
+            "at": 0.6
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "af68ef33-c7bd-4ddc-9498-15f48abcabed",
+          "flowId": "305f31a6-6c10-4fb9-addc-9df916d69710",
+          "source": {
+            "kind": "node",
+            "nodeId": "413357ea-3d5a-4d53-9cdb-4c517f8f6214",
+            "side": "right",
+            "at": 0.35
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "9c195b37-f455-44ef-ac62-f90438394068",
+            "side": "left",
+            "at": 0.6
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "721c68ea-fddd-4f93-9300-9a23d1f5f75e",
+          "flowId": "0ed1d2c9-42e7-40b0-bdc9-6546083219ad",
+          "source": {
+            "kind": "node",
+            "nodeId": "9c195b37-f455-44ef-ac62-f90438394068",
+            "side": "right",
+            "at": 0.72
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "3263c3b7-d45f-4418-b089-09f1c9752c6c",
+            "side": "left",
+            "at": 0.6
+          },
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "4e9406d4-7782-4557-9957-d5eb3d0c8d7d",
+          "flowId": "ae63b88a-f191-41ba-bdaf-e42b2515be0d",
+          "source": {
+            "kind": "node",
+            "nodeId": "9c195b37-f455-44ef-ac62-f90438394068",
+            "side": "right",
+            "at": 0.25
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "413357ea-3d5a-4d53-9cdb-4c517f8f6214",
+            "side": "top",
+            "at": 0.8
+          },
+          "labelDx": 0,
+          "labelDy": 0,
+          "routing": "auto"
+        },
+        {
+          "id": "595f3ddc-9b39-4a5c-8845-a8700836045d",
+          "flowId": "abccf8a0-e361-4c60-9c04-4c43854f64a2",
+          "source": {
+            "kind": "boundary",
+            "side": "top",
+            "at": 0.84
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "3263c3b7-d45f-4418-b089-09f1c9752c6c",
+            "side": "top",
+            "at": 0.5
+          },
+          "tunnelSource": true,
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        },
+        {
+          "id": "ffab1bcb-c806-43b6-a7c5-32cfa0ae51a2",
+          "flowId": "a48d0764-6209-48b4-8feb-9b3f97bd8133",
+          "source": {
+            "kind": "boundary",
+            "side": "bottom",
+            "at": 0.84
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "3263c3b7-d45f-4418-b089-09f1c9752c6c",
+            "side": "bottom",
+            "at": 0.5
+          },
+          "originArrowId": "627e8e30-2e22-428f-a97d-e9e6a754c2e2",
+          "inheritedSide": "bottom",
+          "routing": "auto",
+          "labelDx": 0,
+          "labelDy": 0
+        }
+      ]
+    },
+    "edf46754-9f15-4608-b541-21a282f34055": {
+      "id": "edf46754-9f15-4608-b541-21a282f34055",
+      "notation": "DFD",
+      "parentDiagramId": "2cca5183-9ecd-4c45-b913-a1878fd0bb91",
+      "parentNodeId": "73df878f-f4c0-4983-83d0-f14a8a261d39",
+      "nodes": [
+        {
+          "id": "6cd338d0-0196-4df6-a02d-d911d1c4767d",
+          "name": "Заказчик",
+          "x": 100,
+          "y": 340,
+          "w": 235,
+          "h": 105,
+          "color": "#edf2f8",
+          "description": "",
+          "kind": "entity"
+        },
+        {
+          "id": "8af0bbaa-28c2-4998-8c53-95dca9bcd516",
+          "name": "Согласовать чертёж",
+          "x": 540,
+          "y": 340,
+          "w": 235,
+          "h": 105,
+          "color": "#ffffff",
+          "description": "",
+          "kind": "process",
+          "center": "Конструкторское бюро",
+          "rate": 800,
+          "hours": 2,
+          "frequency": 1
+        },
+        {
+          "id": "909a1d1f-30bf-4df1-8290-78c6264ea907",
+          "name": "Архив чертежей",
+          "x": 980,
+          "y": 340,
+          "w": 235,
+          "h": 85,
+          "color": "#edf8f4",
+          "description": "",
+          "kind": "store"
+        }
+      ],
+      "arrows": [
+        {
+          "id": "2caaecdb-18b3-4d72-9472-4740a01392b6",
+          "flowId": "219ae5e8-5720-4176-b371-2b8fc25c4475",
+          "source": {
+            "kind": "node",
+            "nodeId": "6cd338d0-0196-4df6-a02d-d911d1c4767d",
+            "side": "right",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "8af0bbaa-28c2-4998-8c53-95dca9bcd516",
+            "side": "left",
+            "at": 0.5
+          }
+        },
+        {
+          "id": "bc403e36-826f-46de-a18e-e450b3396144",
+          "flowId": "d427c32a-9542-4ac8-8d21-5dc561422d2d",
+          "source": {
+            "kind": "node",
+            "nodeId": "8af0bbaa-28c2-4998-8c53-95dca9bcd516",
+            "side": "right",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "909a1d1f-30bf-4df1-8290-78c6264ea907",
+            "side": "left",
+            "at": 0.5
+          }
+        }
+      ]
+    },
+    "19488031-586e-46b4-9bfc-25b505e6066e": {
+      "id": "19488031-586e-46b4-9bfc-25b505e6066e",
+      "notation": "IDEF3",
+      "parentDiagramId": "2cca5183-9ecd-4c45-b913-a1878fd0bb91",
+      "parentNodeId": "413357ea-3d5a-4d53-9cdb-4c517f8f6214",
+      "nodes": [
+        {
+          "id": "83da0afa-11a0-4e3a-bcfd-d37a3185f9c4",
+          "name": "Получить чертёж",
+          "x": 90,
+          "y": 260,
+          "w": 235,
+          "h": 105,
+          "color": "#ffffff",
+          "description": "",
+          "role": "Конструктор"
+        },
+        {
+          "id": "09350069-da41-4991-b095-571eb87c7a39",
+          "name": "AND",
+          "x": 410,
+          "y": 280,
+          "w": 84,
+          "h": 80,
+          "color": "#ffffff",
+          "description": "",
+          "role": "Мастер",
+          "junction": "AND",
+          "synchronous": true
+        },
+        {
+          "id": "3286bace-4afb-4109-85ee-e15ba9585440",
+          "name": "Раскроить детали",
+          "x": 620,
+          "y": 170,
+          "w": 235,
+          "h": 105,
+          "color": "#ffffff",
+          "description": "",
+          "role": "Мастер",
+          "rate": 600,
+          "hours": 2,
+          "frequency": 2
+        },
+        {
+          "id": "babed766-52fc-4455-bf9e-df7f84474e0b",
+          "name": "Подготовить крепёж",
+          "x": 620,
+          "y": 500,
+          "w": 235,
+          "h": 105,
+          "color": "#ffffff",
+          "description": "",
+          "role": "Кладовщик",
+          "cost": 500,
+          "center": "Склад"
+        },
+        {
+          "id": "c486090d-072a-426c-bab7-fa58f637c733",
+          "name": "AND",
+          "x": 950,
+          "y": 300,
+          "w": 84,
+          "h": 80,
+          "color": "#ffffff",
+          "description": "",
+          "role": "Мастер",
+          "junction": "AND",
+          "synchronous": true
+        },
+        {
+          "id": "e52ba342-10a2-4b70-9ced-5d308b5c5eb5",
+          "name": "Передать на сборку",
+          "x": 1140,
+          "y": 380,
+          "w": 210,
+          "h": 105,
+          "color": "#ffffff",
+          "description": "",
+          "role": "Мастер",
+          "referentId": "9c195b37-f455-44ef-ac62-f90438394068"
+        }
+      ],
+      "arrows": [
+        {
+          "id": "2d342f6a-6ac9-4acb-ad5c-9af79077498f",
+          "flowId": "47ae9e78-580c-4a6a-aa56-e0188812e844",
+          "source": {
+            "kind": "node",
+            "nodeId": "83da0afa-11a0-4e3a-bcfd-d37a3185f9c4",
+            "side": "right",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "09350069-da41-4991-b095-571eb87c7a39",
+            "side": "left",
+            "at": 0.5
+          }
+        },
+        {
+          "id": "ec3c04e7-df42-45e8-9dac-fc47c8eaeb14",
+          "flowId": "c204c56e-1da5-413e-9bc9-259bb9e0604c",
+          "source": {
+            "kind": "node",
+            "nodeId": "09350069-da41-4991-b095-571eb87c7a39",
+            "side": "right",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "3286bace-4afb-4109-85ee-e15ba9585440",
+            "side": "left",
+            "at": 0.5
+          }
+        },
+        {
+          "id": "91b9469f-3a7c-4785-8d84-0255ecfa357b",
+          "flowId": "28b9b4cb-71de-4fc4-bf3e-d12cc135f837",
+          "source": {
+            "kind": "node",
+            "nodeId": "09350069-da41-4991-b095-571eb87c7a39",
+            "side": "right",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "babed766-52fc-4455-bf9e-df7f84474e0b",
+            "side": "left",
+            "at": 0.5
+          }
+        },
+        {
+          "id": "6aa8e97e-75aa-4a25-bdaa-019d7e626955",
+          "flowId": "17787fa0-4915-4689-a62e-8517065439f3",
+          "source": {
+            "kind": "node",
+            "nodeId": "3286bace-4afb-4109-85ee-e15ba9585440",
+            "side": "right",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "c486090d-072a-426c-bab7-fa58f637c733",
+            "side": "left",
+            "at": 0.5
+          }
+        },
+        {
+          "id": "7c8398c9-e717-4f1c-9352-352ea6506712",
+          "flowId": "a38eb6be-2e53-459d-b832-8595a94f4d0c",
+          "source": {
+            "kind": "node",
+            "nodeId": "babed766-52fc-4455-bf9e-df7f84474e0b",
+            "side": "right",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "c486090d-072a-426c-bab7-fa58f637c733",
+            "side": "left",
+            "at": 0.5
+          }
+        },
+        {
+          "id": "5961158a-c849-41f2-bc46-d95d42c1685c",
+          "flowId": "aa3d1b54-a698-46b3-8ba0-0c92b4f25e43",
+          "source": {
+            "kind": "node",
+            "nodeId": "c486090d-072a-426c-bab7-fa58f637c733",
+            "side": "right",
+            "at": 0.5
+          },
+          "target": {
+            "kind": "node",
+            "nodeId": "e52ba342-10a2-4b70-9ced-5d308b5c5eb5",
+            "side": "left",
+            "at": 0.5
+          }
+        }
+      ]
+    }
+  },
+  "flows": {
+    "8b11b99d-6d0d-46ea-bd0d-4ba79bd22f79": {
+      "name": "Заказ и пожелания клиента"
+    },
+    "beb56439-a17c-42eb-b204-21a0110da53a": {
+      "name": "Материалы и комплектующие"
+    },
+    "b98f5b54-a1f4-4b66-b34b-c294ebd12266": {
+      "name": "Договор и срок исполнения"
+    },
+    "118d8814-12aa-4fc3-bb96-e684bf6d4a18": {
+      "name": "Критерии качества"
+    },
+    "0dee86ae-3a21-405b-ae58-90b7a3de07ff": {
+      "name": "Технологическая карта"
+    },
+    "c37d6760-1c5f-4465-bf61-739a833b466c": {
+      "name": "Готовая мебель и акт передачи"
+    },
+    "7fe3ea6d-5321-40a5-b7de-72613e369a9b": {
+      "name": "Детали мебели"
+    },
+    "8f4059ac-c9df-4fcc-906e-82da23ce3ecf": {
+      "name": "Менеджер и конструктор"
+    },
+    "fe456cb1-3d59-437b-b153-323d1c56b366": {
+      "name": "Мастер контроля качества"
+    },
+    "a48d0764-6209-48b4-8feb-9b3f97bd8133": {
+      "name": "Станки и инструменты"
+    },
+    "b7990e92-55c9-45e5-ab57-aaae35e5d46e": {
+      "name": "Согласованный чертёж"
+    },
+    "4fd5bf65-4fa8-4558-8aae-056136b48272": {
+      "name": "Подготовленные материалы"
+    },
+    "305f31a6-6c10-4fb9-addc-9df916d69710": {
+      "name": "Детали мебели"
+    },
+    "0ed1d2c9-42e7-40b0-bdc9-6546083219ad": {
+      "name": "Проверенная мебель"
+    },
+    "ae63b88a-f191-41ba-bdaf-e42b2515be0d": {
+      "name": "Детали на доработку"
+    },
+    "abccf8a0-e361-4c60-9c04-4c43854f64a2": {
+      "name": "Правила упаковки и передачи"
+    },
+    "219ae5e8-5720-4176-b371-2b8fc25c4475": {
+      "name": "Требования к мебели",
+      "definition": "Размеры, материалы и назначение изделия."
+    },
+    "d427c32a-9542-4ac8-8d21-5dc561422d2d": {
+      "name": "Согласованный чертёж"
+    },
+    "47ae9e78-580c-4a6a-aa56-e0188812e844": {
+      "name": ""
+    },
+    "c204c56e-1da5-413e-9bc9-259bb9e0604c": {
+      "name": ""
+    },
+    "28b9b4cb-71de-4fc4-bf3e-d12cc135f837": {
+      "name": ""
+    },
+    "17787fa0-4915-4689-a62e-8517065439f3": {
+      "name": ""
+    },
+    "a38eb6be-2e53-459d-b832-8595a94f4d0c": {
+      "name": ""
+    },
+    "aa3d1b54-a698-46b3-8ba0-0c92b4f25e43": {
+      "name": ""
+    }
+  }
+}
