@@ -1,12 +1,12 @@
 # IDEF Studio
 
-[![Скачать для Windows](https://img.shields.io/badge/Скачать_для_Windows-0.6.0_x64-2563eb?style=for-the-badge&logo=windows)](https://github.com/RuzikStudio/IDEF-Studio/releases/download/v0.6.0/IDEF-Studio-Windows-x64.zip)
+[![Скачать для Windows](https://img.shields.io/badge/Windows_x64-Setup_0.6.1-2563eb?style=for-the-badge&logo=windows)](https://github.com/RuzikStudio/IDEF-Studio/releases/download/v0.6.1/IDEF-Studio-0.6.1-Windows-x64-Setup.exe)
 
-**[Скачать приложение для Windows — ZIP](https://github.com/RuzikStudio/IDEF-Studio/releases/download/v0.6.0/IDEF-Studio-Windows-x64.zip)**
+[Windows без установки — ZIP](https://github.com/RuzikStudio/IDEF-Studio/releases/download/v0.6.1/IDEF-Studio-Windows-x64.zip) · [Контрольные суммы SHA-256](https://github.com/RuzikStudio/IDEF-Studio/releases/download/v0.6.1/SHA256.txt)
 
-После скачивания распакуйте **весь архив** и запустите **IDEF Studio.exe**. Аккаунт GitHub и Node.js для запуска не нужны. Это предварительная версия 0.6.0.
+На Windows запустите Setup. Если скачали ZIP, распакуйте весь архив и откройте **IDEF Studio.exe**. Аккаунт GitHub и Node.js для запуска не нужны.
 
-Локальный учебный редактор диаграмм для Windows. Версия 0.6.0, предварительный выпуск.
+IDEF Studio — локальный учебный редактор диаграмм. Версия 0.6.1, предварительный выпуск.
 
 | Нотация | Доступно | Ограничения |
 | --- | --- | --- |
