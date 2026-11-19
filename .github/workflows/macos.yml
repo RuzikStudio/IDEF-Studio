@@ -20,7 +20,7 @@ jobs:
           lipo -verify_arch arm64 "release/mac-arm64/IDEF Studio.app/Contents/MacOS/IDEF Studio"
           hdiutil verify release/*.dmg
       - run: node tests/block-routing-ui.cjs "release/mac-arm64/IDEF Studio.app/Contents/MacOS/IDEF Studio"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: IDEF-Studio-macOS-arm64
           path: release/*.dmg
