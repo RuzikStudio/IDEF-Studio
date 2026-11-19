@@ -69,8 +69,9 @@ export function syncDfd(p: Project): void {
       }
       const attached = d.arrows.filter(
         (a) =>
-          (a.source?.kind === "node" && a.source.nodeId === n.id) ||
-          (a.target?.kind === "node" && a.target.nodeId === n.id),
+          !child.excludedOrigins?.includes(a.id) &&
+          ((a.source?.kind === "node" && a.source.nodeId === n.id) ||
+            (a.target?.kind === "node" && a.target.nodeId === n.id)),
       );
       const ids = new Set(attached.map((a) => a.id));
       child.arrows = child.arrows.filter(

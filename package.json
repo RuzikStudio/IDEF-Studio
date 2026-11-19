@@ -1,6 +1,6 @@
 {
   "name": "idef-studio",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "Учебный редактор IDEF0, DFD, IDEF3 и IDEF1X",
   "type": "module",
@@ -12,7 +12,9 @@
     "test": "tsx --test tests/*.test.ts",
     "package": "npm run build && electron-builder --win dir",
     "test:ui": "node tests/ui.cjs",
-    "test:arrows-ui": "node tests/arrows-ui.cjs"
+    "test:arrows-ui": "node tests/arrows-ui.cjs",
+    "package:mac": "npm run build && electron-builder --mac dmg --arm64",
+    "package:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -62,7 +64,36 @@
         "from": "examples",
         "to": "examples"
       }
-    ]
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "electron/icon.png",
+      "minimumSystemVersion": "13.0",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "notarize": false
+    },
+    "dmg": {
+      "artifactName": "IDEF-Studio-${version}-macOS-${arch}.${ext}"
+    },
+    "nsis": {
+      "artifactName": "IDEF-Studio-${version}-Windows-${arch}-Setup.${ext}",
+      "perMachine": false,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": [
+        "ru_RU",
+        "en_US"
+      ]
+    }
   },
   "license": "GPL-3.0-only"
 }

@@ -15,7 +15,34 @@ const path = require("node:path");
       .first()
       .getAttribute("data-arrow-id");
     const rootArrow = () => page.locator(`[data-arrow-id="${arrowId}"]`);
-    await rootArrow().locator("text").first().click();
+    const rootLabel = () =>
+      page.locator(`[data-arrow-label="${arrowId}"] text`);
+    await rootLabel().click();
+    const handle = page.locator("[data-arrow-endpoint=target]");
+    const originalY = await handle.getAttribute("cy");
+    const originalX = await handle.getAttribute("cx");
+    const handleBox = await handle.boundingBox();
+    const x = handleBox.x + handleBox.width / 2;
+    const y = handleBox.y + handleBox.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 8, y + 17, { steps: 5 });
+    await page.mouse.up();
+    await expect(handle).not.toHaveAttribute("cy", originalY);
+    await expect(handle).toHaveAttribute("cx", originalX);
+    await page
+      .getByRole("button", { name: "Отменить (Ctrl+Z)", exact: true })
+      .click();
+    await rootLabel().click();
+    await expect(handle).toHaveAttribute("cy", originalY);
+    const picker = page.getByLabel("Цвет стрелки", { exact: true });
+    await picker.fill("#176947");
+    const line = rootArrow().locator("polyline[marker-end]");
+    await expect(line).toHaveAttribute("stroke", "#176947");
+    await expect(line).toHaveAttribute("marker-end", /176947/);
+    await expect(rootLabel()).toHaveAttribute("fill", "#176947");
+    await page.getByRole("button", { name: "Сбросить", exact: true }).click();
+    await expect(line).not.toHaveAttribute("stroke", "#176947");
     await page
       .getByRole("button", { name: "Добавить опорную точку", exact: true })
       .click();
@@ -38,7 +65,7 @@ const path = require("node:path");
     await page
       .getByRole("button", { name: "Отменить (Ctrl+Z)", exact: true })
       .click();
-    await rootArrow().locator("text").first().click();
+    await rootLabel().click();
     await expect(page.locator("[data-waypoint-index] rect")).toHaveAttribute(
       "transform",
       before,
@@ -46,7 +73,7 @@ const path = require("node:path");
     await page
       .getByRole("button", { name: "Повторить (Ctrl+Y)", exact: true })
       .click();
-    await rootArrow().locator("text").first().click();
+    await rootLabel().click();
     await page
       .getByRole("button", { name: "Добавить опорную точку", exact: true })
       .click();
@@ -87,7 +114,7 @@ const path = require("node:path");
     )
       throw Error("Missing semantic symbols in export");
     await page.getByRole("button", { name: "К родителю", exact: true }).click();
-    await rootArrow().locator("text").first().click();
+    await rootLabel().click();
     await page.getByTestId("tunnel-target").uncheck();
     await page
       .getByRole("button", { name: "Автоматически", exact: true })

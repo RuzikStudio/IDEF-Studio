@@ -58,3 +58,20 @@ npm run package
 GPL-3.0-only, см. LICENSE. Уведомления зависимостей — THIRD_PARTY_NOTICES.txt. При распространении сборок сохраняйте лицензии Electron/Chromium из папки сборки и предоставляйте соответствующие исходники с инструкцией сборки.
 
 См. CONTRIBUTING.md, SECURITY.md и RELEASE.md.
+
+### Установщик для Windows
+
+Команда `npm run package:win` собирает установщик x64 в папке `release`. При установке можно выбрать папку, установка выполняется для текущего пользователя.
+
+### Сборка для Mac с Apple Silicon
+
+На Mac с macOS 13 или новее выполните `npm ci` и `npm run package:mac`. Откройте DMG из папки `release` и перетащите IDEF Studio в «Программы». В GitHub Actions тот же DMG собирает задача **macOS installer**.
+
+Сборка использует локальную подпись ad hoc. Для восстановления подписи доверенной копии приложения выполните в Терминале следующий блок.
+
+```bash
+app="/Applications/IDEF Studio.app"
+codesign --force --deep --sign - "$app" &&
+  codesign --verify --deep --strict --verbose=2 "$app" &&
+  open "$app"
+```

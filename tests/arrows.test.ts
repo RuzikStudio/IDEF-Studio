@@ -16,8 +16,10 @@ import {
   arrowGeometry,
   addWaypoint,
   resetRoute,
+  straightenArrow,
   icomCode,
   deleteArrow,
+  removeDiagramArrow,
   branchArrow,
   validate,
 } from "../src/model.ts";
@@ -245,4 +247,48 @@ test("six decomposed functions stay within the diagram sheet", () => {
   assert.equal(p.diagrams[id].nodes.length, 6);
   for (const n of p.diagrams[id].nodes)
     assert(n.x + n.w < 1385 && n.y + n.h < 765);
+});
+
+test("automatic attachments stay straight across overlapping edges after move and resize", () => {
+  const { d, a, right, obstacle } = routing();
+  obstacle.y = 600;
+  right.y += 60;
+  assert.equal(clear(d, a).points.length, 2);
+  right.h += 25;
+  assert.equal(clear(d, a).points.length, 2);
+  if (a.source?.kind !== "node") throw Error("Expected node");
+  a.source.fixed = true;
+  a.source.at = 0.1;
+  assert.equal(clear(d, a).points.length, 4);
+});
+
+test("deleting the sole inherited arrow persists through save and leaves its parent editable", () => {
+  const p = newProject();
+  const d = p.diagrams[p.rootId];
+  const root = addBlock(p, d.id);
+  const parent = addArrow(p, d.id, boundary("left"), nodeEnd(root.id, "left"));
+  const child = decompose(p, d.id, root.id);
+  const inherited = p.diagrams[child].arrows[0];
+  removeDiagramArrow(p, child, inherited.id);
+  p.flows[parent.flowId].color = "#176947";
+  const opened = parseProject(serialize(p));
+  assert.equal(opened.diagrams[child].arrows.length, 0);
+  assert.equal(opened.diagrams[d.id].arrows[0].id, parent.id);
+  assert.equal(opened.flows[parent.flowId].color, "#176947");
+  delete opened.diagrams[child].excludedOrigins;
+  syncInheritance(opened);
+  assert.equal(opened.diagrams[child].arrows[0].flowId, parent.flowId);
+});
+
+test("straightening clears a manual jog and keeps a blocked route intact", () => {
+  const { d, a, obstacle } = routing();
+  a.waypoints = [{ x: 570, y: 220 }];
+  a.routing = "manual";
+  const before = clone(a);
+  assert.equal(straightenArrow(d, a), false);
+  assert.deepEqual(a, before);
+  obstacle.y = 610;
+  assert.equal(straightenArrow(d, a), true);
+  assert.equal(a.waypoints, undefined);
+  assert.equal(clear(d, a).points.length, 2);
 });

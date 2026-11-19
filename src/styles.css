@@ -539,7 +539,7 @@ p {
   background-size: 12px 12px;
 }
 .page-positioner {
-  padding: 28px 32px 50px;
+  padding: 14px 16px;
   min-width: min-content;
   min-height: 100%;
   display: flex;
@@ -1298,3 +1298,30 @@ kbd {
 .cost-panel summary b {float:right;font-variant-numeric:tabular-nums;font-weight:600}
 .cost-panel summary:focus-visible {outline:2px solid var(--accent);outline-offset:2px}
 .cost-fields {display:grid;gap:12px;padding:4px 0 16px}
+
+.arrow-endpoint-handle {
+  touch-action: none;
+}
+.arrow-color-field {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+.arrow-color-field label {
+  flex: 1;
+}
+.arrow-color-field input[type="color"] {
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding: 3px;
+  cursor: pointer;
+}
+@media print {
+  .arrow-endpoint-handle { display: none; }
+}
+
+.canvas-focus > .sidebar,
+.canvas-focus > .properties {
+  display: none;
+}

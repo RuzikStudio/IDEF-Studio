@@ -18,7 +18,7 @@ import { attributes } from "./idef1x";
 export type Notation = "IDEF0" | "DFD" | "IDEF3" | "IDEF1X";
 export type Side = "left" | "top" | "right" | "bottom";
 export type Endpoint =
-  | { kind: "node"; nodeId: string; side: Side; at: number }
+  | { kind: "node"; nodeId: string; side: Side; at: number; fixed?: boolean }
   | { kind: "boundary"; side: Side; at: number };
 export type Block = {
   center?: string;
@@ -44,6 +44,7 @@ export type Block = {
   contextOf?: string;
 };
 export type Arrow = {
+  color?: string;
   identifying?: boolean;
   cardinality?: "many" | "oneOrMore" | "zeroOrOne" | "one";
   optionalParent?: boolean;
@@ -70,6 +71,7 @@ export type Diagram = {
   parentNodeId?: string;
   nodes: Block[];
   arrows: Arrow[];
+  excludedOrigins?: string[];
 };
 export type Project = {
   format: "idef-studio";
@@ -81,7 +83,7 @@ export type Project = {
   author: string;
   rootId: string;
   diagrams: Record<string, Diagram>;
-  flows: Record<string, { name: string; definition?: string }>;
+  flows: Record<string, { name: string; definition?: string; color?: string }>;
 };
 export const PAGE = {
   w: 1440,
@@ -305,16 +307,9 @@ export function decompose(
       p,
       id,
       `${notation === "DFD" ? "Процесс" : notation === "IDEF3" ? "Действие" : "Функция"} ${i + 1}`,
-      notationOf(p, did) === "DFD"
-        ? 350 + (i % 3) * 270
-        : count > 4
-          ? 200 + (i % 3) * 370
-          : 220 + i * 260,
-      notationOf(p, did) === "DFD"
-        ? 275 + Math.floor(i / 3) * 230
-        : count > 4
-          ? 240 + Math.floor(i / 3) * 280
-          : 210 + i * 130,
+      (notation === "DFD" ? 310 : 220) +
+        (i % 3) * (notation === "DFD" ? 295 : 375),
+      200 + Math.floor(i / 3) * 270 + (i % 3) * 55,
     );
   syncInheritance(p);
   return id;
@@ -343,7 +338,9 @@ export function syncInheritance(p: Project): void {
         visit(child.id);
         continue;
       }
-      const attached = d.arrows.filter((a) => touchingSide(a, n.id));
+      const attached = d.arrows.filter(
+        (a) => touchingSide(a, n.id) && !child.excludedOrigins?.includes(a.id),
+      );
       const ids = new Set(attached.map((a) => a.id));
       child.arrows = child.arrows.filter(
         (a) => !a.originArrowId || ids.has(a.originArrowId),
@@ -426,6 +423,20 @@ export function deleteBlock(p: Project, did: string, nid: string): void {
     }
     return !hitS && !hitT;
   });
+  syncInheritance(p);
+}
+export function removeDiagramArrow(p: Project, did: string, aid: string): void {
+  const d = p.diagrams[did];
+  const origin = d.arrows.find((a) => a.id === aid)?.originArrowId;
+  if (
+    origin &&
+    d.arrows.filter((a) => !a.suppressed && a.originArrowId === origin)
+      .length === 1
+  ) {
+    (d.excludedOrigins ??= []).push(origin);
+  } else {
+    d.arrows = d.arrows.filter((a) => a.id !== aid);
+  }
   syncInheritance(p);
 }
 export function deleteArrow(p: Project, did: string, aid: string): void {
@@ -638,6 +649,100 @@ function geometryFromPath(
   }
   return { points, label, handle, axis, legs };
 }
+function straightPath(
+  d: Diagram,
+  a: Arrow,
+  align = false,
+): [Point, Point] | undefined {
+  const { source, target } = a;
+  if (!source || !target) return;
+  const sp = position(d, source),
+    tp = position(d, target);
+  const sv = vec[source.side],
+    tv = vec[target.side];
+  const fromSign = source.kind === "node" ? 1 : -1;
+  const toSign = target.kind === "node" ? -1 : 1;
+  if (sv.x * fromSign !== tv.x * toSign || sv.y * fromSign !== tv.y * toSign)
+    return;
+  if (((tp.x - sp.x) * sv.x + (tp.y - sp.y) * sv.y) * fromSign <= 0) return;
+  const axis = sv.x ? "y" : "x";
+  const interval = (ep: Endpoint, pt: Point): [number, number] => {
+    const shared = d.arrows.some(
+      (other) =>
+        other !== a &&
+        !other.suppressed &&
+        other.flowId === a.flowId &&
+        [other.source, other.target].some(
+          (end) =>
+            end &&
+            end.kind === ep.kind &&
+            end.side === ep.side &&
+            end.at === ep.at &&
+            (ep.kind === "boundary" ||
+              (end.kind === "node" && end.nodeId === ep.nodeId)),
+        ),
+    );
+    if (shared || (!align && (ep.kind === "boundary" || ep.fixed)))
+      return [pt[axis], pt[axis]];
+    if (ep.kind === "boundary")
+      return axis === "x" ? [PAGE.left, PAGE.right] : [PAGE.top, PAGE.bottom];
+    const block = d.nodes.find((n) => n.id === ep.nodeId);
+    if (!block) return [pt[axis], pt[axis]];
+    const length = axis === "x" ? block.w : block.h;
+    const inset = Math.min(10, length / 4);
+    return [block[axis] + inset, block[axis] + length - inset];
+  };
+  const [sMin, sMax] = interval(source, sp),
+    [tMin, tMax] = interval(target, tp);
+  const low = Math.max(sMin, tMin),
+    high = Math.min(sMax, tMax);
+  if (low > high + 1e-7) return;
+  const preferred =
+    source.kind === "boundary"
+      ? sp[axis]
+      : target.kind === "boundary"
+        ? tp[axis]
+        : (sp[axis] + tp[axis]) / 2;
+  const edges = d.nodes.flatMap((block) => [
+    block[axis] - 4,
+    block[axis] + (axis === "x" ? block.w : block.h) + 4,
+  ]);
+  const candidates = [
+    Math.max(low, Math.min(high, preferred)),
+    low,
+    high,
+    ...edges.filter((value) => value >= low && value <= high),
+  ].sort((x, y) => Math.abs(x - preferred) - Math.abs(y - preferred));
+  for (const value of candidates) {
+    const start = { ...sp, [axis]: value },
+      end = { ...tp, [axis]: value };
+    if (!d.nodes.some((n) => intersects(start, end, n))) return [start, end];
+  }
+}
+
+export function straightenArrow(d: Diagram, a: Arrow): boolean {
+  const path = straightPath(d, a, true);
+  if (!path || !a.source || !a.target) return false;
+  for (const [ep, point] of [
+    [a.source, path[0]],
+    [a.target, path[1]],
+  ] as const) {
+    const axis = ep.side === "top" || ep.side === "bottom" ? "x" : "y";
+    if (Math.abs(position(d, ep)[axis] - point[axis]) < 1e-7) continue;
+    if (ep.kind === "boundary") {
+      const [min, max] =
+        axis === "x" ? [PAGE.left, PAGE.right] : [PAGE.top, PAGE.bottom];
+      ep.at = (point[axis] - min) / (max - min);
+    } else {
+      const block = d.nodes.find((n) => n.id === ep.nodeId)!;
+      ep.at = (point[axis] - block[axis]) / (axis === "x" ? block.w : block.h);
+    }
+    ep.at = Math.max(0, Math.min(1, ep.at));
+  }
+  resetRoute(a);
+  return true;
+}
+
 export function arrowGeometry(d: Diagram, a: Arrow): ArrowGeometry {
   if (!a.source || !a.target) return legacyArrowGeometry(d, a);
   if (a.route !== undefined && a.routing !== "auto" && !a.waypoints?.length) {
@@ -672,13 +777,35 @@ export function arrowGeometry(d: Diagram, a: Arrow): ArrowGeometry {
   const startDir = directions.findIndex((v) => v.x === sd.x && v.y === sd.y),
     endDir = directions.findIndex((v) => v.x === ed.x && v.y === ed.y);
   const pins = a.waypoints || [];
-  if (
-    !pins.length &&
-    ((sp.x === tp.x && sd.y === ed.y && (tp.y - sp.y) * sd.y > 0) ||
-      (sp.y === tp.y && sd.x === ed.x && (tp.x - sp.x) * sd.x > 0)) &&
-    !d.nodes.some((n) => intersects(sp, tp, n))
-  )
-    return geometryFromPath(d, [sp, tp], [[sp, tp]]);
+  if (!pins.length && a.routing !== "manual") {
+    const direct = straightPath(d, a);
+    if (direct) return geometryFromPath(d, direct, [direct]);
+    const mx = (sp.x + tp.x) / 2,
+      my = (sp.y + tp.y) / 2;
+    const candidates = [
+      [sp, { x: tp.x, y: sp.y }, tp],
+      [sp, { x: sp.x, y: tp.y }, tp],
+      [sp, { x: mx, y: sp.y }, { x: mx, y: tp.y }, tp],
+      [sp, { x: sp.x, y: my }, { x: tp.x, y: my }, tp],
+    ];
+    for (const candidate of candidates) {
+      const points = simplify(candidate);
+      if (points.length < 2) continue;
+      const first = points[1],
+        last = points[points.length - 2];
+      if (
+        (first.x - sp.x) * sd.x + (first.y - sp.y) * sd.y <= 0 ||
+        (tp.x - last.x) * ed.x + (tp.y - last.y) * ed.y <= 0
+      )
+        continue;
+      if (
+        !points
+          .slice(1)
+          .some((pt, i) => d.nodes.some((n) => intersects(points[i], pt, n)))
+      )
+        return geometryFromPath(d, points, [points]);
+    }
+  }
   const s = { x: sp.x + sd.x * 16, y: sp.y + sd.y * 16 },
     t = { x: tp.x - ed.x * 16, y: tp.y - ed.y * 16 };
   for (const margin of [12, 4]) {
@@ -780,13 +907,45 @@ function validateDiagram(p: Project, diagram: Diagram): Issue[] {
   }
   if (p.notation === "IDEF3") {
     const issues: Issue[] = [];
-    for(const a of diagram.arrows) if(!a.source || !a.target)issues.push({diagramId:diagram.id,objectId:a.id,text:"Связь предшествования не подключена."});
-    for(const n of diagram.nodes){
-      if(n.referentId && !Object.values(p.diagrams).some(d=>d.id===n.referentId || d.nodes.some(x=>x.id===n.referentId)))issues.push({diagramId:diagram.id,objectId:n.id,text:"Объект референта был удалён. Выберите другую ссылку."});
-      if(n.synchronous){
-        const incoming=diagram.arrows.filter(a=>a.target?.kind==="node" && a.target.nodeId===n.id).length;
-        const outgoing=diagram.arrows.filter(a=>a.source?.kind==="node" && a.source.nodeId===n.id).length;
-        if(!["AND","OR"].includes(n.junction||"") || !(incoming===1 && outgoing>=2 || outgoing===1 && incoming>=2))issues.push({diagramId:diagram.id,objectId:n.id,text:"Синхронный AND/OR должен соединять одну ветвь с несколькими."});
+    for (const a of diagram.arrows)
+      if (!a.source || !a.target)
+        issues.push({
+          diagramId: diagram.id,
+          objectId: a.id,
+          text: "Связь предшествования не подключена.",
+        });
+    for (const n of diagram.nodes) {
+      if (
+        n.referentId &&
+        !Object.values(p.diagrams).some(
+          (d) =>
+            d.id === n.referentId || d.nodes.some((x) => x.id === n.referentId),
+        )
+      )
+        issues.push({
+          diagramId: diagram.id,
+          objectId: n.id,
+          text: "Объект референта был удалён. Выберите другую ссылку.",
+        });
+      if (n.synchronous) {
+        const incoming = diagram.arrows.filter(
+          (a) => a.target?.kind === "node" && a.target.nodeId === n.id,
+        ).length;
+        const outgoing = diagram.arrows.filter(
+          (a) => a.source?.kind === "node" && a.source.nodeId === n.id,
+        ).length;
+        if (
+          !["AND", "OR"].includes(n.junction || "") ||
+          !(
+            (incoming === 1 && outgoing >= 2) ||
+            (outgoing === 1 && incoming >= 2)
+          )
+        )
+          issues.push({
+            diagramId: diagram.id,
+            objectId: n.id,
+            text: "Синхронный AND/OR должен соединять одну ветвь с несколькими.",
+          });
       }
     }
     return issues;
@@ -1047,6 +1206,11 @@ export function parseProject(text: string): Project {
           a.target?.kind === "boundary")
       )
         fail();
+      if (
+        a.color !== undefined &&
+        (typeof a.color !== "string" || !/^#[0-9a-f]{6}$/i.test(a.color))
+      )
+        fail();
       if (a.routing !== undefined && !["auto", "manual"].includes(a.routing))
         fail();
       if (
@@ -1072,6 +1236,9 @@ export function parseProject(text: string): Project {
           !finite(ep.at) ||
           ep.at < 0 ||
           ep.at > 1 ||
+          (ep.kind === "node" &&
+            ep.fixed !== undefined &&
+            typeof ep.fixed !== "boolean") ||
           !["node", "boundary"].includes(ep.kind)
         )
           fail();
@@ -1089,6 +1256,18 @@ export function parseProject(text: string): Project {
         )
           fail();
       }
+    }
+  }
+  for (const d of Object.values(p.diagrams)) {
+    if (
+      d.excludedOrigins !== undefined &&
+      (!Array.isArray(d.excludedOrigins) ||
+        d.excludedOrigins.some((id) => typeof id !== "string"))
+    )
+      fail();
+    for (const a of d.arrows) {
+      const flow = p.flows[a.flowId];
+      if (flow && a.color) flow.color ??= a.color;
     }
   }
   for (const flow of Object.values(p.flows))
@@ -1165,6 +1344,13 @@ export function parseProject(text: string): Project {
   if (p.diagrams[p.rootId].parentDiagramId) fail();
   walk(p.rootId);
   if (visited.size !== entries.length) fail();
+  for (const flow of Object.values(p.flows)) {
+    if (
+      flow.color !== undefined &&
+      (typeof flow.color !== "string" || !/^#[0-9a-f]{6}$/i.test(flow.color))
+    )
+      fail();
+  }
   p.version = 3;
   syncInheritance(p);
   return p;

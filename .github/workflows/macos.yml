@@ -1,0 +1,27 @@
+name: macOS installer
+on: [workflow_dispatch, workflow_call]
+permissions:
+  contents: read
+jobs:
+  macos-arm64:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run package:mac
+      - name: Verify the app and disk image
+        run: |
+          codesign --verify --deep --strict --verbose=2 "release/mac-arm64/IDEF Studio.app"
+          lipo -verify_arch arm64 "release/mac-arm64/IDEF Studio.app/Contents/MacOS/IDEF Studio"
+          hdiutil verify release/*.dmg
+      - run: node tests/block-routing-ui.cjs "release/mac-arm64/IDEF Studio.app/Contents/MacOS/IDEF Studio"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IDEF-Studio-macOS-arm64
+          path: release/*.dmg
+          if-no-files-found: error

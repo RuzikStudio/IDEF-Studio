@@ -12,12 +12,17 @@ const { _electron: electron, expect } = require("@playwright/test");
       errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await expect(
-      page.getByRole("heading", { name: "Изготовление мебели на заказ", exact: true }),
+      page.getByRole("heading", {
+        name: "Изготовление мебели на заказ",
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(page.locator("[data-node-id]")).toHaveCount(1);
     await page.locator("[data-node-id]").first().dblclick();
     await expect(page.locator("[data-node-id]")).toHaveCount(4);
-    await expect(page.locator(".status-version")).toHaveText("IDEF Studio 0.6");
+    await expect(page.locator(".status-version")).toHaveText(
+      "IDEF Studio " + require("../package.json").version,
+    );
     await expect(page.locator("[data-icom-code]")).toHaveCount(11);
     await page
       .getByRole("button", { name: "Развести стрелки автоматически" })
@@ -38,4 +43,3 @@ const { _electron: electron, expect } = require("@playwright/test");
   console.error(e);
   process.exitCode = 1;
 });
-

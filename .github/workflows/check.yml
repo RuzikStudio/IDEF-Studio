@@ -17,18 +17,27 @@ jobs:
       - run: New-Item -ItemType Directory -Force test-results
       - run: node tests/examples-ui.cjs
       - run: node tests/idef1x-ui.cjs
-      - run: npx electron-builder --win dir
+      - run: npx electron-builder --win nsis --x64
       - run: node tests/ports-ui.cjs "release/win-unpacked/IDEF Studio.exe"
       - run: node tests/local-mixed-ui.cjs "release/win-unpacked/IDEF Studio.exe"
+      - run: node tests/block-routing-ui.cjs "release/win-unpacked/IDEF Studio.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: IDEF-Studio-Windows-x64
           path: release/win-unpacked/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IDEF-Studio-Windows-x64-Setup
+          path: release/*-Setup.exe
+          if-no-files-found: error
 
+  macos:
+    if: github.ref == 'refs/tags/v0.6.1'
+    uses: ./.github/workflows/macos.yml
 
   release:
-    if: github.ref == 'refs/tags/v0.6.0'
-    needs: windows
+    if: github.ref == 'refs/tags/v0.6.1'
+    needs: [windows, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -37,13 +46,30 @@ jobs:
         with:
           name: IDEF-Studio-Windows-x64
           path: windows
-      - run: |
+      - uses: actions/download-artifact@v4
+        with:
+          name: IDEF-Studio-Windows-x64-Setup
+          path: assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: IDEF-Studio-macOS-arm64
+          path: assets
+      - name: Package the portable Windows build
+        run: |
           cd windows
           test -f 'IDEF Studio.exe'
-          zip -qr ../IDEF-Studio-Windows-x64.zip .
-      - name: Publish Windows release
+          zip -qr ../assets/IDEF-Studio-Windows-x64.zip .
+      - name: Publish v0.6.1
         env:
           GH_TOKEN: ${{ github.token }}
+        working-directory: assets
         run: |
-          sha256sum IDEF-Studio-Windows-x64.zip > SHA256.txt
-          gh release create "$GITHUB_REF_NAME" IDEF-Studio-Windows-x64.zip SHA256.txt --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "IDEF Studio 0.6.0" --notes "Смешанные модели IDEF0, DFD и IDEF3, отчёт по модели и дорожки исполнителей, свободные порты стрелок и сворачиваемая панель стоимости. Распакуйте весь архив и запустите IDEF Studio.exe. Учебная модель находится в папке examples."
+          set -euo pipefail
+          sha256sum *.exe *.dmg *.zip > SHA256.txt
+          cat > notes.md <<'EOF'
+          Выпрямление стрелок одной командой, общий цвет и подпись ветвей, изменение размеров блоков и развёрнутый холст по F11.
+
+          - **Windows x64:** запустите Setup. Для запуска без установки распакуйте весь ZIP и откройте IDEF Studio.exe.
+          - **macOS, Apple Silicon:** откройте DMG и перенесите IDEF Studio в папку «Программы». Сборка подписана локальной подписью ad hoc.
+          EOF
+          gh release create "$GITHUB_REF_NAME" *.exe *.dmg *.zip SHA256.txt --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "IDEF Studio 0.6.1" --notes-file notes.md

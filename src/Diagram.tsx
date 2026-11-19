@@ -1,4 +1,4 @@
-import { occupied, freeSlot } from "./ports";
+import { inheritedEnd } from "./dfd";
 import { attributes } from "./idef1x";
 import { crossingBridges, bridgePath } from "./crossings";
 import { useMemo } from "react";
@@ -15,6 +15,7 @@ import {
   icomCode,
   tunnelAt,
   type Project,
+  type Diagram,
   type Endpoint,
   type Point,
   type Side,
@@ -72,7 +73,80 @@ function SvgText({
     </text>
   );
 }
+type LabelBox = { x: number; y: number; w: number; h: number };
+type ArrowLabel = {
+  point: Point;
+  lines: string[];
+  manual: boolean;
+  offset?: Point;
+};
+function labelBox(point: Point, lines: string[]): LabelBox {
+  const w = Math.max(...lines.map((line) => line.length)) * 7 + 6;
+  return { x: point.x - w / 2, y: point.y - 12, w, h: lines.length * 15 + 2 };
+}
+function overlaps(a: LabelBox, b: LabelBox) {
+  return (
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+  );
+}
+function placeLabels(
+  d: Diagram,
+  labels: Map<string, ArrowLabel>,
+  geometries: Map<string, ReturnType<typeof arrowGeometry>>,
+) {
+  const used = [...labels.values()]
+    .filter((label) => label.manual)
+    .map(({ point, lines }) => labelBox(point, lines));
+  const segments = [...geometries.values()].flatMap(({ points }) =>
+    points.slice(1).map((b, index) => {
+      const a = points[index];
+      return {
+        x: Math.min(a.x, b.x) - 1,
+        y: Math.min(a.y, b.y) - 1,
+        w: Math.abs(a.x - b.x) + 2,
+        h: Math.abs(a.y - b.y) + 2,
+      };
+    }),
+  );
+  for (const label of labels.values()) {
+    if (label.manual) continue;
+    let best = label.point;
+    let score = Infinity;
+    const step = label.lines.length * 15 + 4;
+    for (const dy of [0, -step, step, -2 * step, 2 * step]) {
+      for (const dx of [0, -36, 36, -72, 72]) {
+        const point = { x: label.point.x + dx, y: label.point.y + dy };
+        const box = labelBox(point, label.lines);
+        if (
+          box.x < 12 ||
+          box.x + box.w > PAGE.w - 12 ||
+          box.y < 58 ||
+          box.y + box.h > 814
+        )
+          continue;
+        const penalty =
+          500 * d.nodes.filter((n) => overlaps(n, box)).length +
+          240 * used.filter((other) => overlaps(other, box)).length +
+          20 * segments.filter((line) => overlaps(line, box)).length +
+          Math.abs(dx) * 0.9 +
+          Math.abs(dy);
+        if (penalty < score) {
+          score = penalty;
+          best = point;
+        }
+      }
+    }
+    label.offset = { x: best.x - label.point.x, y: best.y - label.point.y };
+    label.point = best;
+    used.push(labelBox(best, label.lines));
+  }
+}
 type Props = {
+  onEndpointDown?: (
+    e: React.PointerEvent,
+    id: string,
+    end: "source" | "target",
+  ) => void;
   project: Project;
   diagramId: string;
   selected?: string;
@@ -80,9 +154,11 @@ type Props = {
   showGrid?: boolean;
   connecting?: boolean;
   onSelect?: (id: string) => void;
+  onResizeDown?: (e: React.PointerEvent, id: string) => void;
+  onConnectBlock?: (e: React.MouseEvent, id: string) => void;
   onNodeDown?: (e: React.PointerEvent, id: string) => void;
   onRouteDown?: (e: React.PointerEvent, id: string, axis: "x" | "y") => void;
-  onLabelDown?: (e: React.PointerEvent, id: string) => void;
+  onLabelDown?: (e: React.PointerEvent, id: string, offset?: Point) => void;
   onPort?: (e: React.MouseEvent, ep: Endpoint) => void;
   onDecompose?: (id: string) => void;
   onStub?: (id: string) => void;
@@ -100,12 +176,15 @@ export function DiagramContent({
   connecting = false,
   onSelect,
   onNodeDown,
+  onResizeDown,
+  onConnectBlock,
   onRouteDown,
   onLabelDown,
   onPort,
   onDecompose,
   onStub,
   onBoundaryDown,
+  onEndpointDown,
   onWaypointAdd,
   onWaypointDown,
   onWaypointRemove,
@@ -122,19 +201,111 @@ export function DiagramContent({
   );
   const gridId = `grid-${diagramId}`,
     marker = `arrow-${diagramId}`;
+  const arrows = useMemo(() => visibleArrows(d), [d]);
+  const selectedArrow = arrows.find((a) => a.id === selected);
+  const labels = useMemo(() => {
+    const result = new Map<string, ArrowLabel>();
+    const shared = new Set<string>();
+    const ordered = [...arrows].sort(
+      (a, b) =>
+        Number(!!(b.labelDx || b.labelDy)) -
+          Number(!!(a.labelDx || a.labelDy)) ||
+        Number(!!(b.source && b.target)) - Number(!!(a.source && a.target)),
+    );
+    for (const a of ordered) {
+      if (shared.has(a.flowId)) continue;
+      shared.add(a.flowId);
+      const name = p.flows[a.flowId]?.name || "";
+      if (!name.trim()) continue;
+      const geo = geometries.get(a.id)!;
+      const label = {
+        x: geo.label.x + (a.labelDx || 0),
+        y: geo.label.y + (a.labelDy || 0),
+      };
+      const manual = !!(a.labelDx || a.labelDy);
+      const boundaryEp =
+        a.source?.kind === "boundary"
+          ? a.source
+          : a.target?.kind === "boundary"
+            ? a.target
+            : null;
+      const bp = boundaryEp ? position(d, boundaryEp) : null;
+      let labelMax = 25;
+      if (
+        bp &&
+        boundaryEp &&
+        (boundaryEp.side === "bottom" || boundaryEp.side === "top")
+      ) {
+        const edgeSide = boundaryEp.side;
+        const positions = [
+          ...new Set(
+            arrows
+              .flatMap((other) => [other.source, other.target])
+              .flatMap((e) =>
+                e?.kind === "boundary" && e.side === edgeSide
+                  ? [position(d, e).x]
+                  : [],
+              ),
+          ),
+        ].sort((x, y) => x - y);
+        const index = positions.indexOf(bp.x),
+          gap = Math.min(
+            bp.x - (positions[index - 1] ?? -Infinity),
+            (positions[index + 1] ?? Infinity) - bp.x,
+          );
+        labelMax = Math.max(8, Math.min(25, Math.floor(gap / 7)));
+        const stagger = gap < 100 ? (index % 3) * 45 : 0;
+        label.x = bp.x + (a.labelDx || 0);
+        label.y =
+          bp.y +
+          (edgeSide === "bottom"
+            ? -18 - stagger - (wrap(name, labelMax).length - 1) * 15
+            : 18 + stagger) +
+          (a.labelDy || 0);
+      }
+      if (
+        boundaryEp &&
+        ["left", "right"].includes(boundaryEp.side) &&
+        a.source &&
+        a.target
+      ) {
+        const from = position(d, a.source),
+          to = position(d, a.target),
+          gap = Math.abs(to.x - from.x);
+        labelMax = Math.max(10, Math.min(25, Math.floor(gap / 7.2)));
+        if (gap < 190) {
+          label.x = (from.x + to.x) / 2 + (a.labelDx || 0);
+          label.y =
+            bp!.y -
+            12 -
+            (wrap(name, labelMax).length - 1) * 15 +
+            (a.labelDy || 0);
+        }
+      }
+      result.set(a.id, { point: label, lines: wrap(name, labelMax), manual });
+    }
+    placeLabels(d, result, geometries);
+    return result;
+  }, [arrows, d, geometries, p.flows]);
+  const strokes = new Map(
+    arrows.map((a) => [
+      a.id,
+      p.flows[a.flowId]?.color ??
+        a.color ??
+        (geometries.get(a.id)?.blocked
+          ? "#dc5252"
+          : a.id === selected
+            ? "#4f46e5"
+            : !a.source || !a.target
+              ? "#c08438"
+              : "#334155"),
+    ]),
+  );
+  const colors = [...new Set(strokes.values())];
+  const markerId = (color: string) => marker + "-" + color.slice(1);
   return (
     <>
       <defs>
-        <marker
-          id={`${marker}-er`}
-          viewBox="0 0 10 10"
-          refX="5"
-          refY="5"
-          markerWidth="6"
-          markerHeight="6"
-        >
-          <circle cx="5" cy="5" r="4" fill="#334155" />
-        </marker>
         <pattern
           id={gridId}
           width="20"
@@ -143,17 +314,25 @@ export function DiagramContent({
         >
           <circle cx="1" cy="1" r=".8" fill="#dce3ee" />
         </pattern>
-        <marker
-          id={marker}
-          viewBox="0 0 10 10"
-          refX="9"
-          refY="5"
-          markerWidth="7"
-          markerHeight="7"
-          orient="auto-start-reverse"
-        >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
-        </marker>
+        {colors.map((color) => (
+          <marker
+            key={color}
+            id={markerId(color)}
+            viewBox="0 0 10 10"
+            refX={notation === "IDEF1X" ? 5 : 10}
+            refY="5"
+            markerWidth={notation === "IDEF1X" ? 10 : 11}
+            markerHeight={notation === "IDEF1X" ? 10 : 11}
+            markerUnits="userSpaceOnUse"
+            orient="auto"
+          >
+            {notation === "IDEF1X" ? (
+              <circle cx="5" cy="5" r="4" fill={color} />
+            ) : (
+              <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+            )}
+          </marker>
+        ))}
       </defs>
       <rect width={PAGE.w} height={PAGE.h} fill="white" />
       {showGrid && (
@@ -191,10 +370,7 @@ export function DiagramContent({
         const geo = geometries.get(a.id)!,
           points = geo.points.map((pt) => `${pt.x},${pt.y}`).join(" "),
           active = selected === a.id,
-          label = {
-            x: geo.label.x + (a.labelDx || 0),
-            y: geo.label.y + (a.labelDy || 0),
-          },
+          ink = strokes.get(a.id)!,
           pending = !a.source || !a.target;
         const boundaryEp =
           a.source?.kind === "boundary"
@@ -204,57 +380,6 @@ export function DiagramContent({
               : null;
         const bp = boundaryEp ? position(d, boundaryEp) : null,
           code = icomCode(p, diagramId, a);
-        let labelMax = 25;
-        if (
-          bp &&
-          boundaryEp &&
-          (boundaryEp.side === "bottom" || boundaryEp.side === "top")
-        ) {
-          const edgeSide = boundaryEp.side;
-          const positions = visibleArrows(d)
-            .flatMap((other) => [other.source, other.target])
-            .flatMap((e) =>
-              e?.kind === "boundary" && e.side === edgeSide
-                ? [position(d, e).x]
-                : [],
-            )
-            .sort((x, y) => x - y);
-          const index = positions.indexOf(bp.x),
-            gap = Math.min(
-              bp.x - (positions[index - 1] ?? -Infinity),
-              (positions[index + 1] ?? Infinity) - bp.x,
-            );
-          labelMax = Math.max(8, Math.min(25, Math.floor(gap / 7)));
-          const stagger = gap < 100 ? (index % 3) * 45 : 0;
-          label.x = bp.x + (a.labelDx || 0);
-          label.y =
-            bp.y +
-            (edgeSide === "bottom"
-              ? -18 -
-                stagger -
-                (wrap(p.flows[a.flowId]?.name || "", labelMax).length - 1) * 15
-              : 18 + stagger) +
-            (a.labelDy || 0);
-        }
-        if (
-          boundaryEp &&
-          ["left", "right"].includes(boundaryEp.side) &&
-          a.source &&
-          a.target
-        ) {
-          const from = position(d, a.source),
-            to = position(d, a.target),
-            gap = Math.abs(to.x - from.x);
-          labelMax = Math.max(10, Math.min(25, Math.floor(gap / 7.2)));
-          if (gap < 190) {
-            label.x = (from.x + to.x) / 2 + (a.labelDx || 0);
-            label.y =
-              bp!.y -
-              12 -
-              (wrap(p.flows[a.flowId]?.name || "", labelMax).length - 1) * 15 +
-              (a.labelDy || 0);
-          }
-        }
         return (
           <g
             key={a.id}
@@ -283,19 +408,23 @@ export function DiagramContent({
                 style={{ cursor: "pointer" }}
               />
             )}
+            {active && (
+              <polyline
+                points={points}
+                fill="none"
+                stroke={ink}
+                strokeWidth={9}
+                strokeOpacity={0.18}
+                pointerEvents="none"
+              />
+            )}
             <polyline
               points={points}
               fill="none"
-              stroke={
-                geo.blocked
-                  ? "#dc5252"
-                  : active
-                    ? "#4f46e5"
-                    : pending
-                      ? "#c08438"
-                      : "#334155"
+              stroke={ink}
+              strokeWidth={
+                active ? 3.6 : p.flows[a.flowId]?.color || a.color ? 2.6 : 1.8
               }
-              strokeWidth={active ? 2.7 : 1.8}
               strokeDasharray={
                 pending ||
                 geo.blocked ||
@@ -304,38 +433,9 @@ export function DiagramContent({
                   : undefined
               }
               strokeLinejoin="round"
-              markerEnd={`url(#${marker}${notation === "IDEF1X" ? "-er" : ""})`}
+              markerEnd={"url(#" + markerId(ink) + ")"}
               pointerEvents="none"
             />
-            <g
-              onPointerDown={(e) => onLabelDown?.(e, a.id)}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect?.(a.id);
-              }}
-              style={{ cursor: interactive ? "move" : undefined }}
-            >
-              <text
-                x={label.x}
-                y={label.y}
-                fontFamily="Arial, sans-serif"
-                fontSize="13"
-                fill={active ? "#4338ca" : "#334155"}
-                stroke="white"
-                strokeWidth="5"
-                paintOrder="stroke"
-                strokeLinejoin="round"
-                textAnchor="middle"
-              >
-                {wrap(p.flows[a.flowId]?.name || "", labelMax).map(
-                  (line, i) => (
-                    <tspan key={i} x={label.x} dy={i === 0 ? 0 : 15}>
-                      {line}
-                    </tspan>
-                  ),
-                )}
-              </text>
-            </g>
             {notation === "IDEF1X" && a.target && (
               <text
                 x={geo.points.at(-1)!.x - 14}
@@ -543,18 +643,52 @@ export function DiagramContent({
             <path
               d={bridgePath(b)}
               fill="none"
-              stroke={
+              stroke={strokes.get(id)}
+              strokeWidth={
                 selected === id
-                  ? "#4f46e5"
-                  : geometries.get(id)?.blocked
-                    ? "#dc5252"
-                    : "#334155"
+                  ? 3.6
+                  : arrows.some(
+                        (a) =>
+                          a.id === id && (p.flows[a.flowId]?.color || a.color),
+                      )
+                    ? 2.6
+                    : 1.8
               }
-              strokeWidth={selected === id ? 2.7 : 1.8}
             />
           </g>
         )),
       )}
+      {[...labels].map(([id, label]) => (
+        <g
+          key={id}
+          data-arrow-label={id}
+          onPointerDown={(e) => onLabelDown?.(e, id, label.offset)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect?.(id);
+          }}
+          style={{ cursor: interactive ? "move" : undefined }}
+        >
+          <text
+            x={label.point.x}
+            y={label.point.y}
+            fontFamily="Arial, sans-serif"
+            fontSize="13"
+            fill={strokes.get(id)}
+            stroke="white"
+            strokeWidth="3"
+            paintOrder="stroke"
+            strokeLinejoin="round"
+            textAnchor="middle"
+          >
+            {label.lines.map((line, i) => (
+              <tspan key={i} x={label.point.x} dy={i === 0 ? 0 : 15}>
+                {line}
+              </tspan>
+            ))}
+          </text>
+        </g>
+      ))}
       {d.nodes.map((n) => {
         const active = selected === n.id;
         const lines = wrap(n.name, Math.floor((n.w - 32) / 9));
@@ -566,13 +700,20 @@ export function DiagramContent({
             onPointerDown={(e) => onNodeDown?.(e, n.id)}
             onClick={(e) => {
               e.stopPropagation();
-              onSelect?.(n.id);
+              if (connecting) onConnectBlock?.(e, n.id);
+              else onSelect?.(n.id);
             }}
             onDoubleClick={(e) => {
               e.stopPropagation();
-              onDecompose?.(n.id);
+              if (!connecting) onDecompose?.(n.id);
             }}
-            style={{ cursor: interactive ? "move" : undefined }}
+            style={{
+              cursor: connecting
+                ? "crosshair"
+                : interactive
+                  ? "move"
+                  : undefined,
+            }}
           >
             {active && interactive && (
               <rect
@@ -728,102 +869,27 @@ export function DiagramContent({
               </g>
             )}
             {interactive &&
-              sides.map((side) => {
-                const horizontal = side === "top" || side === "bottom";
-                const used = occupied(d, n.id, side);
-                const count = Math.max(
-                  2,
-                  Math.floor((horizontal ? n.w : n.h) / 40),
-                );
-                const stops = [
-                  ...new Set([
-                    ...used,
-                    freeSlot(used),
-                    ...Array.from(
-                      { length: count - 1 },
-                      (_, i) => (i + 1) / count,
-                    ),
-                  ]),
-                ];
-                const start = position(d, {
-                  kind: "node",
-                  nodeId: n.id,
-                  side,
-                  at: 0,
-                });
-                const end = position(d, {
-                  kind: "node",
-                  nodeId: n.id,
-                  side,
-                  at: 1,
-                });
-                return (
-                  <g key={side}>
-                    <line
-                      x1={start.x}
-                      y1={start.y}
-                      x2={end.x}
-                      y2={end.y}
-                      stroke="transparent"
-                      strokeWidth={12}
-                      style={{ cursor: "crosshair" }}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const svg = e.currentTarget.ownerSVGElement!;
-                        const point = svg.createSVGPoint();
-                        point.x = e.clientX;
-                        point.y = e.clientY;
-                        const matrix = svg.getScreenCTM();
-                        if (!matrix) return;
-                        const click = point.matrixTransform(matrix.inverse());
-                        const offset = horizontal
-                          ? (click.x - n.x) / n.w
-                          : (click.y - n.y) / n.h;
-                        onPort?.(e, {
-                          kind: "node",
-                          nodeId: n.id,
-                          side,
-                          at: Math.max(0.01, Math.min(0.99, offset)),
-                        });
-                      }}
-                    >
-                      <title>Подключить в этом месте стороны</title>
-                    </line>
-                    {stops.map((at) => {
-                      const ep: Endpoint = {
-                        kind: "node",
-                        nodeId: n.id,
-                        side,
-                        at,
-                      };
-                      const pt = position(d, ep);
-                      return (
-                        <circle
-                          key={`${side}${at}`}
-                          className={`node-port ${connecting || active ? "visible" : ""}`}
-                          cx={pt.x}
-                          cy={pt.y}
-                          r="5"
-                          fill="white"
-                          stroke={side === "right" ? "#059669" : "#6366f1"}
-                          strokeWidth="2"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onPort?.(e, ep);
-                          }}
-                          style={{ cursor: "crosshair" }}
-                        >
-                          <title>
-                            {sideNames[side]} · нажмите для соединения
-                          </title>
-                        </circle>
-                      );
-                    })}
-                  </g>
-                );
-              })}
+              active &&
+              !connecting &&
+              !n.junction &&
+              !n.contextOf && (
+                <rect
+                  data-block-resize={n.id}
+                  className="arrow-endpoint-handle"
+                  x={n.x + n.w - 6}
+                  y={n.y + n.h - 6}
+                  width="12"
+                  height="12"
+                  rx="2"
+                  fill="white"
+                  stroke="#4f46e5"
+                  strokeWidth="2"
+                  style={{ cursor: "nwse-resize" }}
+                  onPointerDown={(e) => onResizeDown?.(e, n.id)}
+                >
+                  <title>Изменить размер блока</title>
+                </rect>
+              )}
           </g>
         );
       })}
@@ -831,7 +897,8 @@ export function DiagramContent({
         (["source", "target"] as const).map((which) => {
           const ep = a[which];
           if (!ep || !tunnelAt(a, which)) return null;
-          const point = position(d, ep),
+          const path = geometries.get(a.id)!.points;
+          const point = which === "source" ? path[0] : path.at(-1)!,
             out = ep.kind === "node" ? 8 : -8;
           const cx =
               point.x +
@@ -903,6 +970,38 @@ export function DiagramContent({
               </text>
               <title>{sideNames[side]} на границе диаграммы</title>
             </g>
+          );
+        })}
+      {interactive &&
+        !connecting &&
+        selectedArrow &&
+        (["source", "target"] as const).map((end) => {
+          const ep = selectedArrow[end];
+          if (
+            ep?.kind !== "node" ||
+            (notation === "DFD" && inheritedEnd(selectedArrow, end))
+          )
+            return null;
+          const points = geometries.get(selectedArrow.id)!.points;
+          const pt = end === "source" ? points[0] : points.at(-1)!;
+          const horizontal = ep.side === "top" || ep.side === "bottom";
+          return (
+            <circle
+              key={end}
+              data-arrow-endpoint={end}
+              className="arrow-endpoint-handle"
+              cx={pt.x}
+              cy={pt.y}
+              r="6"
+              fill="white"
+              stroke={strokes.get(selectedArrow.id)}
+              strokeWidth="2"
+              style={{ cursor: horizontal ? "ew-resize" : "ns-resize" }}
+              onPointerDown={(e) => onEndpointDown?.(e, selectedArrow.id, end)}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <title>Перетащить вдоль стороны блока</title>
+            </circle>
           );
         })}
       <line x1="40" y1="824" x2="1400" y2="824" stroke="#cbd5e1" />

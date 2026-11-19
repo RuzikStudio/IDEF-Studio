@@ -12,7 +12,10 @@ const fs = require("node:fs/promises");
     page.on("pageerror", (err) => errors.push(err.message));
     await page.waitForSelector("[data-node-id]");
     await expect(
-      page.getByRole("heading", { name: "Изготовление мебели на заказ", exact: true }),
+      page.getByRole("heading", {
+        name: "Изготовление мебели на заказ",
+        exact: true,
+      }),
     ).toBeVisible();
     await page.screenshot({
       path: path.join(root, "test-results/context.png"),
@@ -73,14 +76,14 @@ const fs = require("node:fs/promises");
     await page.getByRole("textbox", { name: "Название потока" }).blur();
     await expect(
       page
-        .locator("[data-arrow-id] text")
+        .locator("[data-arrow-label] text")
         .filter({ hasText: /Проверка.*наследования/ }),
     ).toHaveCount(1);
     await page.getByRole("button", { name: "На родительский уровень" }).click();
     await expect(page.locator("[data-node-id]")).toHaveCount(4);
     await expect(
       page
-        .locator("[data-arrow-id] text")
+        .locator("[data-arrow-label] text")
         .filter({ hasText: /Проверка.*наследования/ }),
     ).toHaveCount(1);
     // Drag a block and undo/redo in the real renderer.

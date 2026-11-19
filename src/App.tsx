@@ -39,6 +39,7 @@ import {
   Grid3X3,
   Minus,
   Maximize,
+  MoveHorizontal,
   Trash2,
   X,
   HelpCircle,
@@ -63,7 +64,7 @@ import {
   addArrow,
   decompose,
   deleteBlock,
-  deleteArrow,
+  removeDiagramArrow,
   branchArrow,
   syncInheritance,
   clone,
@@ -82,6 +83,7 @@ import {
   arrowGeometry,
   addWaypoint,
   resetRoute,
+  straightenArrow,
   setTunnel,
   tunnelAt,
   icomCode,
@@ -120,13 +122,22 @@ declare global {
 }
 type Connection = { start?: Endpoint; arrowId?: string };
 type Drag = {
-  kind: "node" | "route" | "label" | "boundary" | "waypoint";
+  kind:
+    | "node"
+    | "route"
+    | "label"
+    | "boundary"
+    | "waypoint"
+    | "endpoint"
+    | "resize";
   id: string;
   start: Point;
   base: Project;
   axis?: "x" | "y";
   moved: boolean;
   waypointIndex?: number;
+  endpoint?: "source" | "target";
+  labelOffset?: Point;
 };
 function Field({
   value,
@@ -222,7 +233,8 @@ export default function App() {
     [connection, setConnection] = useState<Connection | null>(null);
   const [grid, setGrid] = useState(false),
     [zoom, setZoom] = useState(0.7),
-    [fitMode, setFitMode] = useState(true),
+    [fitMode, setFitMode] = useState<"width" | "page" | null>("page"),
+    [focusCanvas, setFocusCanvas] = useState(false),
     [panel, setPanel] = useState(true),
     [issuesOpen, setIssuesOpen] = useState(false),
     [help, setHelp] = useState(false),
@@ -287,12 +299,21 @@ export default function App() {
     if (!fitMode) return;
     const el = viewport.current;
     if (!el) return;
-    const ro = new ResizeObserver(() =>
-      setZoom(Math.min(1, (el.clientWidth - 64) / PAGE.w)),
-    );
+    const fit = () => {
+      const width = (el.clientWidth - 34) / PAGE.w;
+      const height = (el.clientHeight - 30) / PAGE.h;
+      setZoom(
+        Math.max(
+          0.1,
+          Math.min(1.6, width, fitMode === "page" ? height : Infinity),
+        ),
+      );
+    };
+    const ro = new ResizeObserver(fit);
+    fit();
     ro.observe(el);
     return () => ro.disconnect();
-  }, [fitMode, panel]);
+  }, [fitMode]);
   const pushHistory = (p: Project) => {
     past.current.push(clone(p));
     if (past.current.length > 80) past.current.shift();
@@ -337,7 +358,7 @@ export default function App() {
     setDid(id);
     setSelected(undefined);
     setConnection(null);
-    setFitMode(true);
+    setFitMode("page");
     viewport.current?.scrollTo(0, 0);
   };
   function load(p: Project, name = "") {
@@ -349,7 +370,7 @@ export default function App() {
     setConnection(null);
     setFilename(name);
     setDirty(false);
-    setFitMode(true);
+    setFitMode("page");
   }
   function download(text: string, name: string, type = "application/json") {
     const url = URL.createObjectURL(new Blob([text], { type })),
@@ -425,7 +446,7 @@ export default function App() {
       commit((p) => deleteBlock(p, currentId, node.id));
       setSelected(undefined);
     } else if (arrow) {
-      commit((p) => deleteArrow(p, currentId, arrow.id));
+      commit((p) => removeDiagramArrow(p, currentId, arrow.id));
       setSelected(undefined);
     }
   }
@@ -441,6 +462,11 @@ export default function App() {
         return;
       }
       if ((e.target as HTMLElement)?.closest("input,textarea,select")) return;
+      if (e.key === "F11") {
+        e.preventDefault();
+        setFocusCanvas((active) => !active);
+        return;
+      }
       if (e.key === "Escape") {
         setConnection(null);
         setDecomp(null);
@@ -533,8 +559,8 @@ export default function App() {
             : dfd
               ? kindNames[kind]
               : "Новая функция",
-        200 + (i % 4) * 270,
-        220 + Math.floor(i / 4) * 170,
+        190 + (i % 3) * 390,
+        180 + Math.floor(i / 3) * (er ? 260 : 170),
         kind,
       ).id;
     });
@@ -575,6 +601,43 @@ export default function App() {
     });
     setSelected(id);
     setConnection(null);
+  }
+  function connectBlock(e: React.MouseEvent, id: string) {
+    const block = d.nodes.find((n) => n.id === id)!;
+    const point = coords(e);
+    const stub = d.arrows.find((a) => a.id === connection?.arrowId);
+    const source = stub ? !stub.source : !connection?.start;
+    const allowed: Side[] = dfd
+      ? sides
+      : source
+        ? ["right"]
+        : ["left", "top", "bottom"];
+    const distance = {
+      left: Math.abs(point.x - block.x),
+      right: Math.abs(point.x - block.x - block.w),
+      top: Math.abs(point.y - block.y),
+      bottom: Math.abs(point.y - block.y - block.h),
+    };
+    const nearest = [...allowed].sort((a, b) => distance[a] - distance[b])[0];
+    const other = stub?.source ?? connection?.start;
+    const otherBlock =
+      other?.kind === "node"
+        ? d.nodes.find((n) => n.id === other.nodeId)
+        : undefined;
+    const facing =
+      dfd && otherBlock && otherBlock.x > block.x ? "right" : "left";
+    const side: Side =
+      distance[nearest] < 24 ? nearest : source ? "right" : facing;
+    const horizontal = side === "top" || side === "bottom";
+    const offset = horizontal
+      ? (point.x - block.x) / block.w
+      : (point.y - block.y) / block.h;
+    const preferred = Math.max(0.05, Math.min(0.95, offset));
+    const used = occupied(d, id, side);
+    const at = used.some((value) => Math.abs(value - preferred) < 0.04)
+      ? freeSlot(used)
+      : preferred;
+    port(nodeEnd(id, side, at));
   }
   function port(ep: Endpoint) {
     if (dfd) {
@@ -631,7 +694,7 @@ export default function App() {
         return;
       }
       if (ep.kind !== "node") {
-        notify("Подключите свободный конец к порту функции.");
+        notify("Подключите свободный конец к блоку.");
         return;
       }
       commit((p) => {
@@ -681,8 +744,7 @@ export default function App() {
     e: RPointer,
     id: string,
     kind: Drag["kind"],
-    axis?: "x" | "y",
-    waypointIndex?: number,
+    options?: Pick<Drag, "axis" | "waypointIndex" | "endpoint" | "labelOffset">,
   ) {
     if (e.button !== 0) return;
     e.stopPropagation();
@@ -691,11 +753,10 @@ export default function App() {
     drag.current = {
       kind,
       id,
-      axis,
       start: coords(e),
       base: clone(projectRef.current),
       moved: false,
-      waypointIndex,
+      ...options,
     };
     e.currentTarget.setPointerCapture(e.pointerId);
   }
@@ -716,6 +777,19 @@ export default function App() {
       n.x = Math.max(85, Math.min(1320 - n.w, snap(n.x + dx)));
       n.y = Math.max(125, Math.min(740 - n.h, snap(n.y + dy)));
     }
+    if (state.kind === "resize" && n) {
+      const minimumHeight = er
+        ? Math.min(n.h, 90 + (n.attributes || "").split("\n").length * 21)
+        : 62;
+      n.w = Math.max(
+        er ? 180 : 115,
+        Math.min(PAGE.right - 20 - n.x, snap(n.w + dx)),
+      );
+      n.h = Math.max(
+        minimumHeight,
+        Math.min(PAGE.bottom - 20 - n.y, snap(n.h + dy)),
+      );
+    }
     if (state.kind === "route" && a)
       a.route = snap(state.axis === "x" ? pt.x : pt.y);
     if (
@@ -730,8 +804,24 @@ export default function App() {
       };
     }
     if (state.kind === "label" && a) {
-      a.labelDx = (a.labelDx || 0) + dx;
-      a.labelDy = (a.labelDy || 0) + dy;
+      a.labelDx = (a.labelDx || 0) + (state.labelOffset?.x || 0) + dx;
+      a.labelDy = (a.labelDy || 0) + (state.labelOffset?.y || 0) + dy;
+    }
+    if (state.kind === "endpoint" && a && state.endpoint) {
+      const ep = a[state.endpoint];
+      if (ep?.kind === "node") {
+        const block = dd.nodes.find((node) => node.id === ep.nodeId)!;
+        const horizontal = ep.side === "top" || ep.side === "bottom";
+        const offset = horizontal ? dx / block.w : dy / block.h;
+        const points = arrowGeometry(dd, a).points;
+        const endpoint =
+          state.endpoint === "source" ? points[0] : points.at(-1)!;
+        const start = horizontal
+          ? (endpoint.x - block.x) / block.w
+          : (endpoint.y - block.y) / block.h;
+        ep.at = Math.max(0.01, Math.min(0.99, start + offset));
+        ep.fixed = true;
+      }
     }
     if (state.kind === "boundary" && a) {
       const ep =
@@ -792,6 +882,26 @@ export default function App() {
       a.waypoints?.splice(index, 1);
       if (!a.waypoints?.length) resetRoute(a);
     });
+  }
+  function straightenSelected() {
+    if (!arrow) return;
+    // Plan on a copy so an impossible route leaves the selected arrow and undo history intact.
+    const aligned = clone(arrow);
+    const diagram = {
+      ...d,
+      arrows: d.arrows.map((a) => (a.id === arrow.id ? aligned : a)),
+    };
+    if (!straightenArrow(diagram, aligned)) {
+      notify(
+        "Прямая линия не помещается. Переместите блок или выберите подходящую сторону подключения.",
+      );
+      return;
+    }
+    commit((p) => {
+      const arrows = p.diagrams[currentId].arrows;
+      arrows[arrows.findIndex((a) => a.id === aligned.id)] = aligned;
+    });
+    notify("Стрелка выпрямлена");
   }
   function rerouteAll() {
     commit((p) => {
@@ -937,7 +1047,7 @@ export default function App() {
           </IconButton>
         </div>
       </header>
-      <div className="workspace">
+      <div className={"workspace" + (focusCanvas ? " canvas-focus" : "")}>
         <aside className="sidebar">
           <div className="sidebar-heading">
             <span>Проект</span>
@@ -1182,8 +1292,28 @@ export default function App() {
             >
               <WandSparkles size={17} />
             </IconButton>
+            {arrow?.source && arrow?.target && (
+              <IconButton
+                title="Выпрямить стрелку"
+                onClick={straightenSelected}
+              >
+                <Minus size={18} />
+              </IconButton>
+            )}
+            <IconButton
+              title={
+                focusCanvas
+                  ? "Показать боковые панели (F11)"
+                  : "Развернуть рабочую область (F11)"
+              }
+              active={focusCanvas}
+              onClick={() => setFocusCanvas(!focusCanvas)}
+            >
+              <Maximize size={17} />
+            </IconButton>
             <IconButton
               title="Панель свойств"
+              disabled={focusCanvas}
               active={panel}
               onClick={() => setPanel(!panel)}
             >
@@ -1213,21 +1343,31 @@ export default function App() {
               </button>
             </div>
           )}
+          {!!d.excludedOrigins?.length && (
+            <div className="tunnel-banner">
+              <span>
+                Удалённые наследованные стрелки: {d.excludedOrigins.length}
+              </span>
+              <button
+                onClick={() =>
+                  commit((p) => {
+                    delete p.diagrams[currentId].excludedOrigins;
+                  })
+                }
+              >
+                Восстановить
+              </button>
+            </div>
+          )}
           {connection && (
             <div className="connection-banner">
               <Link2 size={15} />
               <span>
-                {dfd
-                  ? connection.arrowId
-                    ? "Выберите порт процесса для свободного конца потока."
-                    : connection.start
-                      ? "Выберите порт получателя данных."
-                      : "Нажмите порт источника, затем порт получателя. Доступны все стороны."
-                  : connection.arrowId
-                    ? "Выберите порт функции для свободного конца стрелки."
-                    : connection.start
-                      ? "Теперь выберите вход, управление, механизм или выходную границу."
-                      : "Нажмите на выход функции (справа), затем на порт другой функции."}
+                {connection.arrowId
+                  ? "Щёлкните по блоку, чтобы подключить свободный конец."
+                  : connection.start
+                    ? "Щёлкните по получателю. У края блока можно выбрать сторону."
+                    : "Щёлкните по блоку-источнику, затем по получателю."}
               </span>
               <button onClick={() => setConnection(null)}>
                 Отмена <X size={13} />
@@ -1240,7 +1380,7 @@ export default function App() {
             onWheel={(e) => {
               if (e.ctrlKey) {
                 e.preventDefault();
-                setFitMode(false);
+                setFitMode(null);
                 setZoom((z) =>
                   Math.max(0.25, Math.min(1.6, z - e.deltaY * 0.001)),
                 );
@@ -1278,12 +1418,21 @@ export default function App() {
                   connecting={!!connection}
                   onSelect={setSelected}
                   onNodeDown={(e, id) => startDrag(e, id, "node")}
-                  onRouteDown={(e, id, axis) => startDrag(e, id, "route", axis)}
-                  onLabelDown={(e, id) => startDrag(e, id, "label")}
+                  onResizeDown={(e, id) => startDrag(e, id, "resize")}
+                  onConnectBlock={connectBlock}
+                  onRouteDown={(e, id, axis) =>
+                    startDrag(e, id, "route", { axis })
+                  }
+                  onLabelDown={(e, id, offset) =>
+                    startDrag(e, id, "label", { labelOffset: offset })
+                  }
+                  onEndpointDown={(e, id, end) =>
+                    startDrag(e, id, "endpoint", { endpoint: end })
+                  }
                   onBoundaryDown={(e, id) => startDrag(e, id, "boundary")}
                   onWaypointAdd={insertWaypoint}
                   onWaypointDown={(e, id, index) =>
-                    startDrag(e, id, "waypoint", undefined, index)
+                    startDrag(e, id, "waypoint", { waypointIndex: index })
                   }
                   onWaypointRemove={removeWaypoint}
                   onPort={(_, ep) => port(ep)}
@@ -1308,7 +1457,7 @@ export default function App() {
               <IconButton
                 title="Уменьшить"
                 onClick={() => {
-                  setFitMode(false);
+                  setFitMode(null);
                   setZoom((z) => Math.max(0.25, z - 0.1));
                 }}
               >
@@ -1318,7 +1467,7 @@ export default function App() {
               <IconButton
                 title="Увеличить"
                 onClick={() => {
-                  setFitMode(false);
+                  setFitMode(null);
                   setZoom((z) => Math.min(1.6, z + 0.1));
                 }}
               >
@@ -1326,10 +1475,16 @@ export default function App() {
               </IconButton>
               <span className="toolbar-separator" />
               <IconButton
-                title="Уместить по ширине"
-                onClick={() => setFitMode(true)}
+                title="Уместить весь лист"
+                onClick={() => setFitMode("page")}
               >
                 <Maximize size={14} />
+              </IconButton>
+              <IconButton
+                title="Уместить по ширине"
+                onClick={() => setFitMode("width")}
+              >
+                <MoveHorizontal size={14} />
               </IconButton>
             </div>
           </div>
@@ -1707,8 +1862,50 @@ export default function App() {
                     </label>
                   );
                 })}
+                <div className="arrow-color-field">
+                  <label>
+                    Цвет стрелки
+                    <input
+                      type="color"
+                      value={
+                        project.flows[arrow.flowId].color ??
+                        arrow.color ??
+                        "#334155"
+                      }
+                      onChange={(e) => {
+                        const color = e.currentTarget.value;
+                        commit((p) => {
+                          p.flows[arrow.flowId].color = color;
+                        });
+                      }}
+                    />
+                  </label>
+                  {(project.flows[arrow.flowId].color || arrow.color) && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        commit((p) => {
+                          delete p.flows[arrow.flowId].color;
+                          for (const diagram of Object.values(p.diagrams))
+                            for (const a of diagram.arrows)
+                              if (a.flowId === arrow.flowId) delete a.color;
+                        })
+                      }
+                    >
+                      Сбросить
+                    </button>
+                  )}
+                </div>
                 <div className="routing-card">
                   <span className="field-caption">Маршрут стрелки</span>
+                  {arrow.source && arrow.target && (
+                    <button
+                      className="secondary-button"
+                      onClick={straightenSelected}
+                    >
+                      Выпрямить стрелку
+                    </button>
+                  )}
                   <div className="routing-mode">
                     <button
                       className={
@@ -1856,6 +2053,8 @@ export default function App() {
                         (a) => a.id === arrow.id,
                       )!;
                       resetRoute(a);
+                      for (const end of [a.source, a.target])
+                        if (end?.kind === "node") delete end.fixed;
                       a.labelDx = 0;
                       a.labelDy = 0;
                     })
@@ -1870,10 +2069,8 @@ export default function App() {
                     <strong>Связь с родительским уровнем</strong>
                     <p>
                       {icomCode(project, currentId, arrow)} · Стрелка перенесена
-                      из {diagramCode(project, d.parentDiagramId!)}. Её
-                      {dfd
-                        ? "связь с участником контекста сохраняется."
-                        : "граничный конец сохраняется при редактировании."}
+                      из {diagramCode(project, d.parentDiagramId!)}. Её можно
+                      удалить с этой диаграммы.
                     </p>
                     <button
                       onClick={() => navigate(d.parentDiagramId!)}
@@ -1891,7 +2088,7 @@ export default function App() {
                 >
                   <Trash2 size={15} />
                   {arrow.originArrowId
-                    ? "Отсоединить / удалить ветвь"
+                    ? "Удалить с этой диаграммы"
                     : "Удалить стрелку"}
                 </button>
               </>
@@ -1994,7 +2191,7 @@ export default function App() {
           <Keyboard size={13} />
           Горячие клавиши
         </button>
-        <span className="status-version">IDEF Studio 0.6</span>
+        <span className="status-version">IDEF Studio 0.6.1</span>
       </footer>
       {issuesOpen && (
         <div className="issues-panel">
@@ -2227,10 +2424,10 @@ export default function App() {
               <p>
                 <b>DFD.</b> На контексте создайте один процесс и внешние
                 сущности. При декомпозиции добавьте процессы и хранилища, затем
-                подключите унаследованные потоки. Нажмите на любой порт
-                источника, затем получателя. Между сущностями и хранилищами
-                необходим процесс. Элементы контекста редактируются на
-                родительском уровне.
+                подключите унаследованные потоки. Нажмите на блок источника,
+                затем получателя. Между сущностями и хранилищами необходим
+                процесс. Элементы контекста редактируются на родительском
+                уровне.
               </p>
             )}
             <p>
@@ -2255,12 +2452,12 @@ export default function App() {
               </li>
               <li>
                 <strong>Подключите наследованные стрелки.</strong> Нажмите
-                жёлтый плюс у свободного конца, затем подходящий порт функции.
-                Можно выбрать функцию в свойствах стрелки.
+                жёлтый плюс у свободного конца, затем нужный блок. Можно выбрать
+                функцию в свойствах стрелки.
               </li>
               <li>
-                <strong>Свяжите внутренние функции.</strong> Нажмите выходной
-                порт справа, затем входной порт другой функции. Подписи, блоки,
+                <strong>Свяжите внутренние функции.</strong> Нажмите на
+                блок-источник, затем на блок-получатель. Подписи, блоки,
                 граничные точки и квадрат маршрута можно перетаскивать.
               </li>
               <li>

@@ -61,15 +61,27 @@ app.whenReady().then(() => {
       return new Response("Forbidden", { status: 403 });
     return net.fetch(pathToFileURL(target).toString());
   });
-  Menu.setApplicationMenu(null);
+  if (process.platform === "darwin") {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        { role: "appMenu" },
+        { role: "editMenu" },
+        { role: "windowMenu" },
+      ]),
+    );
+  } else {
+    Menu.setApplicationMenu(null);
+  }
   win = new BrowserWindow({
-    title: "IDEF Studio 0.6",
+    title: "IDEF Studio " + app.getVersion(),
     width: 1500,
     height: 980,
     minWidth: 1050,
     minHeight: 720,
     backgroundColor: "#f6f7fb",
-    icon: path.join(__dirname, "icon.ico"),
+    ...(process.platform === "win32"
+      ? { icon: path.join(__dirname, "icon.ico") }
+      : {}),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
