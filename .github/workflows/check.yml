@@ -17,7 +17,7 @@ jobs:
       - run: New-Item -ItemType Directory -Force test-results
       - run: node tests/examples-ui.cjs
       - run: node tests/idef1x-ui.cjs
-      - run: npx electron-builder --win nsis --x64
+      - run: npx electron-builder --win nsis --x64 --publish never
       - run: node tests/ports-ui.cjs "release/win-unpacked/IDEF Studio.exe"
       - run: node tests/local-mixed-ui.cjs "release/win-unpacked/IDEF Studio.exe"
       - run: node tests/block-routing-ui.cjs "release/win-unpacked/IDEF Studio.exe"

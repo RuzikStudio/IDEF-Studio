@@ -13,7 +13,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run package:mac
+      - run: npm run package:mac -- --publish never
       - name: Verify the app and disk image
         run: |
           codesign --verify --deep --strict --verbose=2 "release/mac-arm64/IDEF Studio.app"
